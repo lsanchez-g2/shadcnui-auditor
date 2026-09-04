@@ -1,0 +1,12 @@
+# audit workspaces contain client design data — never commit
+audits/
+spec-cache/
+*.raw.txt
+snapshot/
+findings/
+merged.json
+review.json
+# local
+.DS_Store
+node_modules/
+__pycache__/
