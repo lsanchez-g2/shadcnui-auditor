@@ -1,0 +1,11 @@
+shadcn/ui Figma Audit Swarm
+Copyright (c) 2026 G2.com, Inc. All rights reserved.
+
+Internal G2 tooling. Not licensed for use, copying, or distribution outside
+G2.com, Inc. without written permission. Contact the repository owner before
+sharing externally or proposing an open-source release.
+
+Third-party references: this tool fetches and cites documentation from
+https://ui.shadcn.com at run time; that content remains the property of its
+authors and is not redistributed here. Fonts (Geist, Geist Mono) are loaded
+from Google Fonts under their own license and are not bundled.

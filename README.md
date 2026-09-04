@@ -9,6 +9,7 @@
 [![Spec](https://img.shields.io/badge/spec-live%20shadcn%2Fui%20docs-6366f1)](https://ui.shadcn.com/docs)
 [![Flavors](https://img.shields.io/badge/flavors-Base%20UI%20%C2%B7%20Radix%20%C2%B7%20React%20Aria-71717a)](#-choose-the-flavor)
 [![Self-test](https://img.shields.io/badge/self--test-passing-16a34a)](scripts/selftest.sh)
+[![Internal](https://img.shields.io/badge/G2-internal%20tooling-ff492c)](NOTICE)
 
 [**Overview**](docs/overview.md) · [**Resumen en español**](docs/overview.es.md) · [**Sample report**](examples/sample-report.html) · [**Changelog**](CHANGELOG.md)
 
@@ -277,4 +278,4 @@ Large sets are sampled by axis, not inspected variant by variant; unsampled vari
 
 ## License
 
-Not yet chosen — add a `LICENSE` file before making this repository public.
+Internal G2 tooling — **Copyright © 2026 G2.com, Inc. All rights reserved.** See [`NOTICE`](NOTICE). Not for use or distribution outside G2 without written permission; ask the repository owner before sharing externally or proposing an open-source release.
