@@ -230,6 +230,34 @@ class SampledVariants(unittest.TestCase):
         self.assertEqual(f['severity'], 'critical')
         self.assertNotIn(f['id'], needs)
 
+    def test_universal_variant_claim_without_sample_scope_is_rejected(self):
+        """The real Apollo Button audit's states-009 finding said "on all 264 variants" while
+        only 24 were ever individually inspected, and shipped with confidence=verified because
+        nothing forced the universal-quantifier language to declare its sample."""
+        f = base_finding(element='State values Focus/Pressed used on every one of the 264 Button variants',
+                         current_value='Focus, Pressed (Title Case) on all 264 variants')
+        errors = validate([f])
+        self.assertTrue(any('every instance of an axis' in e for e in errors), errors)
+
+    def test_universal_variant_claim_sampled_but_verified_is_rejected(self):
+        f = base_finding(element='every variant uses the same size scale', sample_scope='sampled',
+                         confidence='verified')
+        errors = validate([f])
+        self.assertTrue(any('contradicts confidence=verified' in e for e in errors), errors)
+
+    def test_universal_variant_claim_declared_exhaustive_is_accepted(self):
+        f = base_finding(element='every variant in the 6-variant set uses the same focus ring',
+                         sample_scope='exhaustive', confidence='verified')
+        errors = validate([f])
+        self.assertEqual(errors, [])
+
+    def test_universal_variant_claim_declared_sampled_and_inferred_is_accepted(self):
+        f = base_finding(element='every one of the 24 sampled variants uses Title Case state names',
+                         current_value='all 264 variants presumed to follow the same pattern',
+                         sample_scope='sampled', confidence='inferred')
+        errors = validate([f])
+        self.assertEqual(errors, [])
+
 
 class IntentionalDivergence(unittest.TestCase):
     """Task scenario 6 — a documented/accepted divergence from shadcn is not a failure."""

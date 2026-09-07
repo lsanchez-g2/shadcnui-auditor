@@ -51,6 +51,13 @@ ALIAS_EXPOSING_SOURCES = re.compile(r'\b(use_figma|ground_truth\.md)\b', re.IGNO
 MODE_RENDER_CLAIM = re.compile(
     r'\brenders? .{0,20}(light|dark) in (light|dark)\b|\bwill render .{0,20}(light|dark)\b',
     re.IGNORECASE)
+# A claim that a pattern holds across every instance of an axis ("all 264 variants", "every
+# variant"). A real audit wrote exactly this ("Focus, Pressed on all 264 variants") while only
+# 24 were ever individually inspected — confidence stayed "verified" because nothing forced the
+# universal-quantifier language to be declared as sampled-or-exhaustive.
+UNIVERSAL_VARIANT_CLAIM = re.compile(
+    r'\ball \d+ variants?\b|\bevery (one of the )?\d*\s*variants?\b|\bevery variant\b|\ball variants?\b',
+    re.IGNORECASE)
 
 
 def load(path):
@@ -90,6 +97,21 @@ def validate_file(agent_file, data, errors):
         if confidence == 'inferred' and fnd.get('sample_scope') not in SAMPLE_SCOPES:
             errors.append(f'{loc}: confidence=inferred requires sample_scope in {sorted(SAMPLE_SCOPES)} '
                           f'(what was sampled vs extrapolated)')
+        sample_text = f"{fnd.get('element', '')} {fnd.get('current_value', '')} {fnd.get('expected_value', '')}"
+        if UNIVERSAL_VARIANT_CLAIM.search(sample_text):
+            if fnd.get('sample_scope') not in SAMPLE_SCOPES:
+                errors.append(
+                    f'{loc}: reads as a claim about every instance of an axis ("{sample_text.strip()}") '
+                    f'but carries no sample_scope. Declare whether every instance was actually '
+                    f'inspected (sample_scope: exhaustive) or this generalizes from a subset '
+                    f'(sample_scope: sampled, with confidence: inferred) — see _common.md rule 4 '
+                    f'"a sample is not a census".')
+            elif fnd.get('sample_scope') == 'sampled' and confidence == 'verified':
+                errors.append(
+                    f'{loc}: sample_scope=sampled contradicts confidence=verified — a claim '
+                    f'extrapolated from a subset to "every"/"all" instances is confidence=inferred '
+                    f'by definition, not verified. Use confidence=inferred, or set '
+                    f'sample_scope=exhaustive if every instance really was inspected.')
         if not str(fnd.get('source', '')).startswith('https://ui.shadcn.com/'):
             errors.append(f'{loc}: source must be a ui.shadcn.com URL')
         for k in ('current_score', 'final_score'):
