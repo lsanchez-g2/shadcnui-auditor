@@ -9,6 +9,8 @@ Does the semantic token set in `variables.json` match the shadcn/ui baseline in 
 
 **Baseline diff** — for every token in `spec.tokens` (core pairs, standalone, charts, sidebar, radius scale): present? Under which collection? Named exactly? Record near-misses as `naming` findings with the rename as the fix. Record extras (not in baseline) in `off_spec` unless they follow the extension pattern (paired + both modes) — then they are compliant extensions, list them in `compliant`.
 
+A token you don't find in the snapshot you were handed is not automatically "missing" — see `_common.md` rule 1. In **system mode** your variable pull already is the global source, so a real absence there is `evidence_scope: global`. In **component mode** you were handed one component's bound variables (or one node's `get_variable_defs`); if that's all you checked, a token you don't see is `evidence_scope: component` and belongs in `unverified[]`, not `findings[]` — pull `search_design_system` for the token name, or ask for `ground_truth.md`, before calling it missing globally.
+
 **Pairing** — every surface has its `-foreground`, every `-foreground` has its surface. Include custom state tokens (`primary-hover`/`primary-hover-foreground`, `primary-disabled`/`primary-disabled-foreground`). Exception: `destructive` is standalone in the current baseline; `destructive-foreground` present → note `legacy`, not a finding.
 
 **Radius** — find the base radius. Verify each `radius-*` variable equals base × factor from `spec.radius` (0.6, 0.8, 1, 1.4, 1.8, 2.2, 2.6) within 0.5px, and that it is an alias/expression of the base where Figma allows it rather than an independent number. Independent numbers that happen to match today are `medium` (they will drift); wrong values are `high`.
