@@ -44,6 +44,13 @@ ABSENCE_LANGUAGE = re.compile(r'\b(missing|absent|does not exist|doesn\'t exist|
 # Sources that expose alias *targets* (vs get_variable_defs/variables.json, which is a flat
 # name→resolved-value map with no alias chain — see references/extraction.md).
 ALIAS_EXPOSING_SOURCES = re.compile(r'\b(use_figma|ground_truth\.md)\b', re.IGNORECASE)
+# A claim about what a token actually renders as in Light/Dark. A real audit filed this exact
+# mistake under category="governance" (not "mode"), describing "custom/*" variables it presumed
+# had no Dark value from their names alone — so this check runs on every finding's text
+# regardless of category or agent, not only ones already labeled category=mode.
+MODE_RENDER_CLAIM = re.compile(
+    r'\brenders? .{0,20}(light|dark) in (light|dark)\b|\bwill render .{0,20}(light|dark)\b',
+    re.IGNORECASE)
 
 
 def load(path):
@@ -123,10 +130,15 @@ def validate_file(agent_file, data, errors):
 
         # Mode claims: a variable's name (a "dark:" fragment, etc.) is never evidence about its
         # actual Dark cell. This must be resolved from real per-mode values or left unverified.
-        if fnd.get('category') == 'mode':
+        # Triggered by category=mode OR by the claim language itself — a real audit filed this
+        # exact mistake ("will render Light in Dark") under category=governance, describing
+        # custom/* variables it presumed had no Dark value from their names alone.
+        mode_text = f"{fnd.get('element', '')} {fnd.get('current_value', '')} {fnd.get('expected_value', '')}"
+        if fnd.get('category') == 'mode' or MODE_RENDER_CLAIM.search(mode_text):
             mode_evidence = fnd.get('mode_evidence')
             if mode_evidence not in MODE_EVIDENCE:
-                errors.append(f'{loc}: category=mode requires mode_evidence in {sorted(MODE_EVIDENCE)}, '
+                errors.append(f'{loc}: this is a mode-rendering claim (category=mode, or the '
+                              f'text reads as one) and requires mode_evidence in {sorted(MODE_EVIDENCE)}, '
                               f'got {mode_evidence!r}')
             elif mode_evidence == 'name_inference':
                 errors.append(

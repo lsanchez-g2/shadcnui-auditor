@@ -145,6 +145,21 @@ class ModeVerification(unittest.TestCase):
         errors = validate([f])
         self.assertTrue(any('name_inference is not allowed' in e for e in errors), errors)
 
+    def test_render_claim_under_a_different_category_is_still_caught(self):
+        """The real Apollo Button audit's governance-006 finding used this exact "will render
+        Light in Dark" framing, but filed it as category=governance, not category=mode — a
+        category-only gate would have missed it. The check must trigger on the claim itself."""
+        f = base_finding(
+            category='governance', dimension='governance',
+            element='layers bound to custom/* variables whose Dark treatment is written into '
+                    'the variable name instead of a Dark mode value — will render Light in Dark',
+            current_value='Bound variables: custom/background dark:input\\30 ...',
+            evidence='Inferred: a name that spells out the dark class is the pattern used when a '
+                     'variable has no Dark mode; mode data itself is not in the snapshot.',
+        )
+        errors = validate([f])
+        self.assertTrue(any('mode-rendering claim' in e for e in errors), errors)
+
     def test_mode_finding_with_cell_values_is_accepted(self):
         f = base_finding(category='mode', dimension='mode', current_value='violet/200 / violet/200',
                          element='accent-hover identical in Light and Dark',
