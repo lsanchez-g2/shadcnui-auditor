@@ -5,7 +5,7 @@
 **Paste a Figma URL. Get a senior-level audit of how closely it matches shadcn/ui — with evidence for every finding.**
 
 [![Skill](https://img.shields.io/badge/Claude-skill-111?logo=anthropic&logoColor=white)](dist/shadcn-figma-audit-swarm.skill)
-[![Version](https://img.shields.io/badge/version-0.3.0-18181b)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.4.0-18181b)](CHANGELOG.md)
 [![Spec](https://img.shields.io/badge/spec-live%20shadcn%2Fui%20docs-6366f1)](https://ui.shadcn.com/docs)
 [![Flavors](https://img.shields.io/badge/flavors-Base%20UI%20%C2%B7%20Radix%20%C2%B7%20React%20Aria-71717a)](#-choose-the-flavor)
 [![Self-test](https://img.shields.io/badge/self--test-passing-16a34a)](scripts/selftest.sh)
@@ -226,6 +226,23 @@ Self-contained HTML. Light/dark with three-state theme handling. Sortable tables
 
 <br>
 
+## Evidence & confidence states
+
+The rules above are enforced, not just stated — `consolidate.py` rejects a specialist's output that doesn't carry the right evidence field for the claim it's making. This is what each one means and when it applies.
+
+| Field | Values | When it's required | What it stops |
+|---|---|---|---|
+| `confidence` | `verified` · `inferred` · `unverified` | every finding | `verified` means the specific instance the finding is about was directly observed. `inferred` means it was extrapolated from a sampled instance to unsampled ones — the file may have 240 variants and only 24 were individually inspected; a pattern seen in the sample is `inferred`, not `verified`, and is never phrased as "all variants". `unverified` means there isn't enough evidence either way. A `critical` finding that is `inferred` or `unverified` is demoted to `high` automatically. |
+| `evidence_scope` | `component` · `global` · `not_applicable` | any finding phrased as a missing/absent **token** claim (tokens/variables categories) | A component-scoped snapshot (one node's bound variables) proves only that *this component* doesn't reference a token — never that the token doesn't exist anywhere in the library. `global` means a library-wide source was checked (a full variable pull, `search_design_system`, `ground_truth.md`); without one, the claim goes in `unverified[]`, not `findings[]`. Doesn't apply to a component's own variant/size *values* — those are fully visible from that component's own metadata, no wider search needed. |
+| `alias_status` | `aliased_verified` · `aliased_target_unknown` · `not_aliased_verified` · `unknown` | every `category: alias` finding | `get_variable_defs`/`variables.json` returns a flat name→resolved-value map with **no alias chain data** — a raw-looking hex could be a literal or the resolved end of an alias the tool didn't show. Only `use_figma` or `ground_truth.md` (which do expose chains) can support `not_aliased_verified`; otherwise it's `aliased_target_unknown`. |
+| `mode_evidence` | `cell_values` · `name_inference` · `not_applicable` | every `category: mode` finding | A variable named `dark:destructive` or similar tells you nothing about what its actual Dark cell holds — real files have had both cells correctly populated despite a `dark:`-shaped name. `name_inference` is rejected outright; a mode claim needs `cell_values` (from `ground_truth.md` or a mode-aware pull) or it isn't a finding. |
+| `sample_scope` | `exhaustive` · `sampled` | required alongside `confidence: inferred` | Names what was actually inspected, so the report can show its work instead of a bare "inferred". |
+| `divergence_status` | `none` · `candidate` · `accepted` | reviewer-only, never set by a specialist | shadcn is the audit's reference baseline, not the file's absolute truth. A real, verified, system-wide deviation on an axis shadcn *does* define (unlike `off_spec_scope`, for axes it doesn't define at all) can be `accepted` by the reviewer as a deliberate design-system decision — under strict criteria (consistent across every sampled instance, a documented or otherwise-signaled decision, costly to normalize) — rather than scored as a plain defect. `report.html` shows both the raw and the accepted-divergence-adjusted compliance number side by side; accepting one never silently changes "the" score. |
+
+Specialists never resolve their own uncertainty by picking the more severe reading — an unresolved case is `unverified`, full stop, and the report says so.
+
+<br>
+
 ## Repository
 
 ```
@@ -237,10 +254,12 @@ references/
   findings-schema.md         the JSON contract every agent writes · scoring rules
 scripts/
   consolidate.py             validate · merge · dedupe · score → merged.json
-  render_report.py           merged.json + review.json → report.html
+  render_report.py           merged.json + review.json → report.html + accepted-divergence-adjusted score
+  _scoring.py                shared scoring formula (consolidate.py's raw score, render_report.py's adjusted score)
   contrast.py                WCAG 2.1 with oklch parsing and alpha compositing
   make_fixture.py            synthetic audit workspace — no client data
-  selftest.sh                deterministic pipeline, end to end
+  selftest.sh                deterministic pipeline, end to end (runs tests/ first)
+tests/test_regression.py    evidence/confidence-state regression tests (stdlib unittest, no deps)
 assets/report_template.html
 docs/                        overview EN · ES · origin prompt
 examples/sample-report.html  rendered from the fixture
@@ -255,7 +274,7 @@ dist/                        packaged .skill
 scripts/selftest.sh
 ```
 
-Generates a fixture, consolidates, renders, and checks `contrast.py` against the 4.54:1 boundary case.
+Runs `tests/test_regression.py`, generates a fixture, consolidates, renders, and checks `contrast.py` against the 4.54:1 boundary case. Run just the regression tests with `python3 tests/test_regression.py -v` or `python3 -m unittest discover -s tests -v`.
 
 Audit workspaces (`audits/`, `snapshot/`, `findings/`, `merged.json`, `review.json`) are git-ignored — they hold a client's design data. Test with the fixture or with your own file.
 
