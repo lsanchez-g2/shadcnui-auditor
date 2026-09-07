@@ -255,7 +255,7 @@ ul.plain li{padding:8px 12px;border:1px solid var(--border);border-radius:var(--
 <script>
 /* ---------- data ---------- */
 const D=JSON.parse(document.getElementById('data').textContent);
-const M=D.merged,R=D.review||{},meta=M.meta||{},T=M.tables||{},score=M.scores||{};
+const M=D.merged,R=D.review||{},meta=M.meta||{},T=M.tables||{},score=M.scores||{},ADJ=D.adjusted||null;
 const SEV=['critical','high','medium','low'];
 const isSystem=(meta.mode||'system')==='system';
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -325,6 +325,7 @@ const sum=section('summary','Executive summary');
 if(R.verdict_paragraph)sum.append(h('div',{cls:'panel'},h('p',{cls:'lead'},R.verdict_paragraph)));
 if(R.unblock_cost?.action)sum.append(h('div',{cls:'panel warn',style:'margin-top:12px'},h('b',{},'To unblock: '),R.unblock_cost.action,' ',h('span',{cls:'pill eff'},'effort '+(R.unblock_cost.effort||'?'))));
 if(c.off_spec_scope_checks_excluded)sum.append(h('p',{cls:'small'},`${c.off_spec_scope_checks_excluded} checks on off-spec variants were excluded from the score; their findings are still listed and tagged.`));
+if(ADJ)sum.append(h('div',{cls:'panel',style:'margin-top:12px'},h('b',{},'Accepted-divergence-adjusted: '),`${ADJ.scores.compliance_pct}%`,h('span',{cls:'small'},` (raw ${ADJ.raw_compliance_pct}% — ${ADJ.checks_excluded} check(s) excluded as intentional design-system divergences, not defects)`)));
 if(R.top_issues?.length){sum.append(h('h3',{},'Top issues'));sum.append(h('ol',{cls:'top'},R.top_issues.map(t=>h('li',{},t))))}
 if(M.needs_verification?.length){sum.append(h('h3',{},'Needs verification'));sum.append(h('p',{cls:'small'},'Reported critical but not confirmable from the snapshot; listed as high until verified: ',M.needs_verification.map(id=>h('code',{},id))))}
 app.append(sum);
@@ -423,6 +424,21 @@ if(M.off_spec.length)os.append(table(['item','reason','recommendation','agent'],
 if(M.unverified?.length){os.append(h('h3',{},`Unverified checks (${M.unverified.length})`));os.append(table(['check','missing','agent'],M.unverified))}
 if(M.conflicts?.length){os.append(h('h3',{},'Specialist disagreements'));os.append(h('div',{cls:'grid2'},M.conflicts.map(k=>{const res=(R.resolutions||[]).find(r=>r.finding_ids?.some(id=>k.finding_ids.includes(id)));return h('div',{cls:'card'},h('div',{cls:'h'},k.element),h('div',{cls:'small'},k.layer_path),h('ul',{style:'margin:8px 0;padding-left:16px'},k.expected_values.map(v=>h('li',{cls:'mono'},v))),res?h('div',{},h('b',{},'Resolution: '),res.decision,' ',h('span',{cls:'small'},'(',res.basis,')')):h('div',{cls:'bad small'},'Unresolved'))})))}
 app.append(os);
+
+/* ---------- accepted divergences ---------- */
+const divergences=R.accepted_divergences||[];
+if(divergences.length){
+ const dv=section('divergences','Accepted divergences','Real, verified differences from shadcn/ui that the reviewer confirmed are deliberate design-system decisions — documented, not defects. Excluded from the adjusted compliance number above; still listed here so the reasoning is auditable.',divergences.length);
+ dv.append(h('div',{cls:'grid2'},divergences.map(d=>{
+  const fs=(d.finding_ids||[]).map(id=>M.findings.find(f=>f.id===id||f.merged_ids?.includes(id))).filter(Boolean);
+  return h('div',{cls:'card'},
+   h('div',{cls:'h'},(d.finding_ids||[]).join(', ')),
+   h('div',{},h('b',{},'Rationale: '),d.rationale),
+   d.evidence?h('div',{cls:'small'},h('b',{},'Evidence: '),d.evidence):null,
+   fs.length?h('ul',{style:'margin:8px 0;padding-left:16px'},fs.map(f=>h('li',{cls:'small'},h('span',{},f.element),' — ',h('code',{},f.current_value),' kept (spec expects ',h('code',{},f.expected_value),')'))):null)
+ })));
+ app.append(dv);
+}
 
 /* ---------- recommendations ---------- */
 const rc=section('reco','Recommendations','Structural changes, mapped to the shadcn convention they align with.');

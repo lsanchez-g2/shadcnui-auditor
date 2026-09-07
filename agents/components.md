@@ -21,6 +21,10 @@ Per component set in scope, 1:1 parity between the Figma component API and the s
 
 Measure from `nodes/<id>.json`; cite the exact field. Compute expected px from the fetched class string in `spec.components[X].classes`, not from memory — sizes have changed between spec versions.
 
+**Sampling.** `meta.json.notes`/the orchestrator's prompt names which variants were actually sampled versus how many exist in total. A finding about a sampled variant is `confidence: verified`. A finding you are extrapolating to variants outside the sample (e.g. "all 6 variants use the same size scale" when only the default size was individually inspected per variant) is `confidence: inferred` with `sample_scope: sampled` and `evidence` naming exactly what was sampled and how many were not (see `_common.md` rule 4) — never phrase it as "every variant" or "the whole set" without that qualifier.
+
+**Divergence candidates.** When a size/variant/radius/typography value differs from the fetched spec consistently across *every sampled instance* of that axis (not a one-off), the finding is still real and still reported at full severity — you don't get to soften it — but add one line to `notes` flagging it as a possible intentional design-system divergence (e.g. "consistent across all 24 sampled Button variants — candidate for reviewer to accept as a documented divergence rather than fix"). Only the reviewer may actually mark it `divergence_status: accepted`; that requires cross-referencing every specialist's sample, which is explicitly the reviewer's job, not yours.
+
 ## Off-spec
 Any variant, size, state, or property the fetched API does not define. Recommend `remove` or `document as intentional extension`. Never fold into `checks`.
 
