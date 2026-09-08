@@ -14,16 +14,50 @@ import re
 import sys
 from collections import defaultdict
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _scoring import DIMENSIONS, WEIGHTS, score as _score  # noqa: E402
+
 EXPECTED_AGENTS = ['tokens', 'variables', 'modes', 'contrast', 'states', 'components', 'styles', 'governance']
 CATEGORIES = {'baseline', 'pairing', 'semantic', 'radius', 'architecture', 'alias', 'orphan', 'scope', 'mode',
               'contrast', 'state', 'variant', 'naming', 'size', 'layout', 'typography', 'anatomy', 'props', 'a11y',
               'style', 'governance'}
-DIMENSIONS = {'pairing', 'contrast', 'mode', 'architecture', 'state_variant', 'governance'}
-WEIGHTS = {'pairing': 20, 'contrast': 25, 'mode': 20, 'architecture': 20, 'state_variant': 15}
 SEVERITIES = ['low', 'medium', 'high', 'critical']
 EFFORTS = {'S', 'M', 'L'}
 REQUIRED = ['id', 'category', 'dimension', 'severity', 'layer_path', 'element', 'expected_value', 'source',
             'evidence', 'fix', 'effort', 'confidence']
+CONFIDENCES = {'verified', 'inferred', 'unverified'}
+EVIDENCE_SCOPES = {'component', 'global', 'not_applicable'}
+ALIAS_STATUSES = {'aliased_verified', 'aliased_target_unknown', 'not_aliased_verified', 'unknown'}
+MODE_EVIDENCE = {'cell_values', 'name_inference', 'not_applicable'}
+SAMPLE_SCOPES = {'exhaustive', 'sampled'}
+# Categories where "missing" means "this token/variable may not exist anywhere in the library" —
+# a claim a component-scoped snapshot cannot settle on its own. Component-property categories
+# (variant/size/state/naming/anatomy/props/a11y) are excluded: a component's own variant-property
+# values are fully enumerable from that one component's metadata, so "missing size=xs on Button"
+# is not a scope-ambiguous claim the way "missing token X" is.
+TOKEN_EXISTENCE_CATEGORIES = {'baseline', 'pairing', 'semantic', 'radius'}
+# "current_value"/"element" phrasing that asserts something is missing/absent. A finding using
+# this language is a claim about the whole library and needs global evidence — see
+# references/findings-schema.md "Absence is not evidence of absence".
+ABSENCE_LANGUAGE = re.compile(r'\b(missing|absent|does not exist|doesn\'t exist|not found|no such|nonexistent)\b',
+                              re.IGNORECASE)
+# Sources that expose alias *targets* (vs get_variable_defs/variables.json, which is a flat
+# name→resolved-value map with no alias chain — see references/extraction.md).
+ALIAS_EXPOSING_SOURCES = re.compile(r'\b(use_figma|ground_truth\.md)\b', re.IGNORECASE)
+# A claim about what a token actually renders as in Light/Dark. A real audit filed this exact
+# mistake under category="governance" (not "mode"), describing "custom/*" variables it presumed
+# had no Dark value from their names alone — so this check runs on every finding's text
+# regardless of category or agent, not only ones already labeled category=mode.
+MODE_RENDER_CLAIM = re.compile(
+    r'\brenders? .{0,20}(light|dark) in (light|dark)\b|\bwill render .{0,20}(light|dark)\b',
+    re.IGNORECASE)
+# A claim that a pattern holds across every instance of an axis ("all 264 variants", "every
+# variant"). A real audit wrote exactly this ("Focus, Pressed on all 264 variants") while only
+# 24 were ever individually inspected — confidence stayed "verified" because nothing forced the
+# universal-quantifier language to be declared as sampled-or-exhaustive.
+UNIVERSAL_VARIANT_CLAIM = re.compile(
+    r'\ball \d+ variants?\b|\bevery (one of the )?\d*\s*variants?\b|\bevery variant\b|\ball variants?\b',
+    re.IGNORECASE)
 
 
 def load(path):
@@ -57,14 +91,82 @@ def validate_file(agent_file, data, errors):
             errors.append(f'{loc}: bad severity {fnd.get("severity")!r}')
         if fnd.get('effort') not in EFFORTS:
             errors.append(f'{loc}: bad effort {fnd.get("effort")!r}')
-        if fnd.get('confidence') not in ('verified', 'unverified'):
-            errors.append(f'{loc}: bad confidence {fnd.get("confidence")!r}')
+        confidence = fnd.get('confidence')
+        if confidence not in CONFIDENCES:
+            errors.append(f'{loc}: bad confidence {confidence!r} (must be one of {sorted(CONFIDENCES)})')
+        if confidence == 'inferred' and fnd.get('sample_scope') not in SAMPLE_SCOPES:
+            errors.append(f'{loc}: confidence=inferred requires sample_scope in {sorted(SAMPLE_SCOPES)} '
+                          f'(what was sampled vs extrapolated)')
+        sample_text = f"{fnd.get('element', '')} {fnd.get('current_value', '')} {fnd.get('expected_value', '')}"
+        if UNIVERSAL_VARIANT_CLAIM.search(sample_text):
+            if fnd.get('sample_scope') not in SAMPLE_SCOPES:
+                errors.append(
+                    f'{loc}: reads as a claim about every instance of an axis ("{sample_text.strip()}") '
+                    f'but carries no sample_scope. Declare whether every instance was actually '
+                    f'inspected (sample_scope: exhaustive) or this generalizes from a subset '
+                    f'(sample_scope: sampled, with confidence: inferred) — see _common.md rule 4 '
+                    f'"a sample is not a census".')
+            elif fnd.get('sample_scope') == 'sampled' and confidence == 'verified':
+                errors.append(
+                    f'{loc}: sample_scope=sampled contradicts confidence=verified — a claim '
+                    f'extrapolated from a subset to "every"/"all" instances is confidence=inferred '
+                    f'by definition, not verified. Use confidence=inferred, or set '
+                    f'sample_scope=exhaustive if every instance really was inspected.')
         if not str(fnd.get('source', '')).startswith('https://ui.shadcn.com/'):
             errors.append(f'{loc}: source must be a ui.shadcn.com URL')
         for k in ('current_score', 'final_score'):
             v = fnd.get(k)
             if v is not None and not (isinstance(v, int) and 1 <= v <= 10):
                 errors.append(f'{loc}: {k} must be int 1-10')
+
+        # Absence is not evidence of absence: a finding phrased as a missing/absent *token* claim
+        # needs global evidence_scope, or it must be reported as unverified instead of a finding.
+        # Scoped to token-existence categories — see TOKEN_EXISTENCE_CATEGORIES above.
+        text = f"{fnd.get('current_value', '')} {fnd.get('element', '')}"
+        evidence_scope = fnd.get('evidence_scope')
+        if fnd.get('category') in TOKEN_EXISTENCE_CATEGORIES and ABSENCE_LANGUAGE.search(text):
+            if evidence_scope != 'global':
+                errors.append(
+                    f'{loc}: reads as an absence claim ("{text.strip()}") but evidence_scope='
+                    f'{evidence_scope!r}, not "global". A component-scoped check that finds no '
+                    f'token cannot prove the token does not exist in the library — move this to '
+                    f'"unverified" (with evidence_scope: component) instead of "findings", or '
+                    f'pull the global variable inventory / search_design_system / ground_truth.md '
+                    f'first. See findings-schema.md "Absence is not evidence of absence".')
+        elif evidence_scope is not None and evidence_scope not in EVIDENCE_SCOPES:
+            errors.append(f'{loc}: bad evidence_scope {evidence_scope!r}')
+
+        # Alias claims: get_variable_defs/variables.json exposes no alias target, so a finding
+        # asserting "not aliased" from that source alone is unverifiable — it must say "unknown".
+        if fnd.get('category') == 'alias':
+            alias_status = fnd.get('alias_status')
+            if alias_status not in ALIAS_STATUSES:
+                errors.append(f'{loc}: category=alias requires alias_status in {sorted(ALIAS_STATUSES)}, '
+                              f'got {alias_status!r}')
+            elif alias_status == 'not_aliased_verified' and not ALIAS_EXPOSING_SOURCES.search(fnd.get('evidence', '')):
+                errors.append(
+                    f'{loc}: alias_status=not_aliased_verified needs evidence citing an '
+                    f'alias-exposing source (use_figma / ground_truth.md) — get_variable_defs/'
+                    f'variables.json alone cannot prove a variable is unaliased. Use '
+                    f'alias_status=aliased_target_unknown instead, or cite the exposing source.')
+
+        # Mode claims: a variable's name (a "dark:" fragment, etc.) is never evidence about its
+        # actual Dark cell. This must be resolved from real per-mode values or left unverified.
+        # Triggered by category=mode OR by the claim language itself — a real audit filed this
+        # exact mistake ("will render Light in Dark") under category=governance, describing
+        # custom/* variables it presumed had no Dark value from their names alone.
+        mode_text = f"{fnd.get('element', '')} {fnd.get('current_value', '')} {fnd.get('expected_value', '')}"
+        if fnd.get('category') == 'mode' or MODE_RENDER_CLAIM.search(mode_text):
+            mode_evidence = fnd.get('mode_evidence')
+            if mode_evidence not in MODE_EVIDENCE:
+                errors.append(f'{loc}: this is a mode-rendering claim (category=mode, or the '
+                              f'text reads as one) and requires mode_evidence in {sorted(MODE_EVIDENCE)}, '
+                              f'got {mode_evidence!r}')
+            elif mode_evidence == 'name_inference':
+                errors.append(
+                    f'{loc}: mode_evidence=name_inference is not allowed on a finding — a variable '
+                    f'name is not evidence about its actual Dark/Light cell value. Move this to '
+                    f'"unverified" instead, or resolve it from ground_truth.md / a mode-aware pull.')
     for i, chk in enumerate(data.get('checks', [])):
         loc = f'{name} checks[{i}]'
         if chk.get('dimension') not in DIMENSIONS:
@@ -140,38 +242,26 @@ def dedupe(findings):
     return merged, conflicts
 
 
-def demote_unverified_criticals(findings):
+def demote_unconfirmed_criticals(findings):
+    """A critical claim the specialist could not directly verify for this exact instance — whether
+    inferred from a sample or outright unverified — is demoted; only a directly-observed critical
+    ships as critical. Both cases are listed under "needs verification" so the report is explicit
+    about which criticals are pinned down and which still need a look."""
     needs = []
     for f in findings:
-        if f['severity'] == 'critical' and f.get('confidence') == 'unverified':
+        if f['severity'] == 'critical' and f.get('confidence') != 'verified':
             f['severity'] = 'high'
             f['demoted_from'] = 'critical'
             needs.append(f['id'])
     return needs
 
 
+# Backward-compatible alias for anything importing the old name.
+demote_unverified_criticals = demote_unconfirmed_criticals
+
+
 def score(checks, mode):
-    """Checks flagged off_spec_scope are excluded: a defect on a variant shadcn does not define
-    is reported, but must not move a number that claims to measure parity with shadcn."""
-    checks = [c for c in checks if not c.get('off_spec_scope')]
-    per_dim = {}
-    for d in DIMENSIONS:
-        rows = [c for c in checks if c['dimension'] == d]
-        total = len(rows)
-        passed = sum(1 for c in rows if c['passed'])
-        per_dim[d] = {'passed': passed, 'total': total, 'rate': (passed / total) if total else None}
-    weighted, weight_used = 0.0, 0
-    for d, w in WEIGHTS.items():
-        r = per_dim[d]['rate']
-        if r is not None:
-            weighted += w * r
-            weight_used += w
-    health = round(100 * weighted / weight_used) if weight_used else None
-    all_scored = [c for c in checks]
-    compliance = round(100 * sum(1 for c in all_scored if c['passed']) / len(all_scored)) if all_scored else None
-    return {'health_score': health if mode == 'system' else None,
-            'compliance_pct': compliance,
-            'weights': WEIGHTS, 'weight_used': weight_used, 'by_dimension': per_dim}
+    return _score(checks, mode)
 
 
 def main():
@@ -227,7 +317,7 @@ def main():
         sys.exit(2)
 
     merged, conflicts = dedupe(all_findings)
-    needs_verification = demote_unverified_criticals(merged)
+    needs_verification = demote_unconfirmed_criticals(merged)
     merged.sort(key=lambda f: (-SEVERITIES.index(f['severity']), 'SML'.index(f['effort']), f['id']))
     scores = score(all_checks, mode)
     off_scope_checks = sum(1 for c in all_checks if c.get('off_spec_scope'))

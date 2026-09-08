@@ -17,6 +17,8 @@ Does every semantic token have a deliberate value in both Light and Dark, and is
 
 **A `dark:` inside a variable name is not evidence about its Dark cell.** A variable called `background dark:input\30` may well have a proper Dark value (a real library did — every such row had both modes populated). From the name alone you may open a `naming` finding (class string as a role name, medium) and nothing else. Whether the Dark cell exists, is identical to Light, or is raw instead of aliased is decided only by `ground_truth.md` or a mode-aware snapshot; without those, the coverage check is `unverified`, and the wording "renders Light in Dark mode" is forbidden.
 
+Every `category: mode` finding carries `mode_evidence`: `cell_values` when you read both modes' actual resolved values (`ground_truth.md`, a mode-aware `use_figma` pull, or per-mode screenshots), `not_applicable` when the finding isn't about a value gap. `mode_evidence: name_inference` is not a legal value for a `findings[]` entry — `consolidate.py` rejects it. If all you have is the name, put the check in `unverified[]` and wait for `ground_truth.md`; do not downgrade the finding to `medium` and ship it anyway; move it out of `findings` entirely.
+
 **Dark bindings on components** — a layer bound to a variable that lacks a Dark value renders Light in Dark mode. Cross-reference `nodes/*.json` bindings against your coverage table and flag per component set (high).
 
 ## Tables

@@ -11,10 +11,13 @@ Is the variable architecture tiered and intact: primitives → semantic → (opt
 
 **Chains** — for each semantic and component variable, follow `alias_of` until a raw value. Statuses:
 - `ok` — semantic aliases a primitive; component aliases a semantic
-- `raw` — semantic or component variable holds a literal color instead of an alias (high; it silently breaks theme swaps)
-- `broken` — alias points to a variable that does not exist (critical)
+- `raw` — semantic or component variable holds a literal color instead of an alias, **confirmed by a source that exposes alias chains** (`use_figma`, `ground_truth.md`) — not just a resolved-value lookup (high; it silently breaks theme swaps)
+- `unknown` — the only source available (`get_variable_defs`/`variables.json`) returns a flat name→resolved-value map with no alias data, so you cannot tell `raw` from "aliased but the tool didn't say". Do not report this as `raw`. Write the finding (if the variable matters) with `category: alias`, `alias_status: aliased_target_unknown`, `confidence: unverified`, and note what would resolve it (a `use_figma` pull or a `ground_truth.md` screenshot of that row)
+- `broken` — alias points to a variable that does not exist (critical) — only reportable when the alias target itself was visible (`use_figma`/`ground_truth.md`); `get_variable_defs` alone cannot show a broken chain either
 - `orphan` — defined, zero `used_by` and not referenced by any alias (medium)
 - `misscoped` — scopes exclude the property it is used for, or a fill token is scoped to strokes (medium)
+
+Every `category: alias` finding needs `alias_status` from `{aliased_verified, aliased_target_unknown, not_aliased_verified, unknown}` (see `_common.md` rule 3). `consolidate.py` rejects `not_aliased_verified` unless `evidence` names `use_figma` or `ground_truth.md` — a resolved hex from `get_variable_defs` alone never proves "not aliased".
 
 **Direct primitive use** — any layer in `nodes/*.json` bound directly to a primitive (`zinc/900` on a Button fill) is `architecture`, high.
 

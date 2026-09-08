@@ -31,7 +31,8 @@ def main():
          + [chk("pairing", "primary-disabled pair", False, "tokens-001"), chk("pairing", "radius-md = base×0.8", False, "tokens-002")],
          [F("tokens", 1, element="primary-disabled — missing foreground pair", current_value="none", expected_value="primary-disabled-foreground",
             fix="Create color/semantic/primary-disabled-foreground; Light+Dark alias primary-foreground; scope text+fill",
-            evidence="variables.json › Semantic has primary-disabled, no *-foreground"),
+            evidence="variables.json › full Semantic collection pull (system-mode, all 40 tokens) has primary-disabled, no *-foreground anywhere",
+            evidence_scope="global"),
           F("tokens", 2, category="radius", layer_path="Semantic / radius/radius-md", node_id=None, element="radius-md not derived from base",
             current_value="6", expected_value="8 (10 × 0.8)", source="https://ui.shadcn.com/docs/theming#radius-scale",
             evidence="variables.json › radius-md=6, radius=10", fix="Set radius-md to alias radius × 0.8", severity="medium")],
@@ -39,20 +40,28 @@ def main():
                                for t in ["background", "foreground", "primary", "primary-foreground", "secondary", "muted", "accent", "border", "input", "ring"]]
                  + [{"token": "primary-disabled-foreground", "present": False, "collection": None, "mode_coverage": "none", "aliased": None, "notes": "custom pair incomplete"}]})
     file("variables", [chk("architecture", "primary aliases primitive", True), chk("architecture", "ghost fill not primitive", False, "variables-001"),
-                       chk("architecture", "radius-md derived", False, "variables-002")],
+                       chk("architecture", "radius-md derived", False, "variables-002"),
+                       chk("architecture", "secondary-hover alias target known", False, "variables-003")],
          [F("variables", 1, category="architecture", dimension="architecture", layer_path="Button / variant=ghost / Fill", element="fill — bound directly to a primitive",
             current_value="tailwind/transparent", expected_value="semantic alias or no fill", fix="Remove the fill; ghost has none in the spec",
             evidence="nodes/1-1.json › ghost.fill", severity="medium"),
           F("variables", 2, category="radius", dimension="architecture", layer_path="Semantic / radius/radius-md", node_id=None, element="radius-md not derived from base",
-            current_value="6", expected_value="8px via alias radius×0.8", evidence="chains: radius-md status=raw", fix="Alias radius-md → radius ×0.8", severity="medium")],
+            current_value="6", expected_value="8px via alias radius×0.8", evidence="chains: radius-md status=raw", fix="Alias radius-md → radius ×0.8", severity="medium"),
+          F("variables", 3, category="alias", dimension="architecture", layer_path="Semantic / secondary-hover", node_id=None,
+            element="alias target unknown — get_variable_defs exposes only the resolved hex", current_value="#F5F5F5 (resolved)",
+            expected_value="confirm secondary-hover aliases a primitive (not a raw literal) via use_figma or ground_truth.md",
+            evidence="variables.json › secondary-hover has no alias_of field (get_variable_defs is a flat name→value map, no chain data)",
+            fix="Run the read-only use_figma script (references/extraction.md) or ask for a Variables-panel screenshot to confirm the chain",
+            severity="medium", confidence="unverified", alias_status="aliased_target_unknown")],
          tables={"chains": [{"variable": "primary", "tier": "semantic", "alias_of": "neutral/900", "resolves_to": "#171717", "status": "ok"},
                             {"variable": "radius-md", "tier": "semantic", "alias_of": None, "resolves_to": "6", "status": "raw"},
-                            {"variable": "ring", "tier": "semantic", "alias_of": "neutral/400", "resolves_to": "#A3A3A3", "status": "ok"}]})
+                            {"variable": "ring", "tier": "semantic", "alias_of": "neutral/400", "resolves_to": "#A3A3A3", "status": "ok"},
+                            {"variable": "secondary-hover", "tier": "semantic", "alias_of": None, "resolves_to": "#F5F5F5", "status": "unknown"}]})
     file("modes", [chk("mode", f"{t} both modes", True) for t in ["primary", "secondary", "muted-foreground", "accent", "ring"]]
          + [chk("mode", "accent-hover distinct in Dark", False, "modes-001")],
          [F("modes", 1, category="mode", dimension="mode", layer_path="Semantic / accent-hover", node_id=None, element="accent-hover identical in Light and Dark",
             current_value="violet/200 / violet/200", expected_value="distinct Dark value", fix="Set Dark accent-hover to violet/800",
-            evidence="ground_truth.md: accent-hover row", severity="medium")],
+            evidence="ground_truth.md: accent-hover row", severity="medium", mode_evidence="cell_values")],
          tables={"parity": [{"token": "primary", "light": "#171717", "dark": "#EBEBEB", "identical": False, "deliberate": True},
                             {"token": "accent-hover", "light": "#DDD6FE", "dark": "#DDD6FE", "identical": True, "deliberate": None}]})
     file("contrast", [chk("contrast", "primary pair Light", True), chk("contrast", "primary pair Dark", True),
@@ -110,7 +119,11 @@ def main():
                "demotions": [{"finding_id": "variables-001", "from": "high", "to": "medium", "reason": "transparent primitive has no visual effect"}], "gaps": [],
                "recommendations": [{"title": "Adopt opacity-based states library-wide", "rationale": "Button already uses opacity; token-based disabled elsewhere would create a mixed convention.", "aligns_with": "bg-primary/80, opacity-50"},
                                    {"title": "Add a semantic radius tier", "rationale": "Components bind border-radius/* primitives; a single radius token with derived scale keeps the file 1:1 with --radius.", "aligns_with": "--radius, rounded-lg"}],
-               "needs_verification": []}, open(f'{A}/review.json', 'w'), indent=2)
+               "needs_verification": [],
+               "accepted_divergences": [{"finding_ids": ["components-002"],
+                                         "rationale": "Label weight 600 is consistent across every sampled Button size/variant (not a one-off) and the set description already calls the pill system a deliberate brand extension; normalizing to 500 would touch every variant for a documented, intentional choice, not a defect.",
+                                         "evidence": "components.json › Button.description names the weight-600 system explicitly; nodes/1-1.json shows weight=600 on all 6 sampled variants"}]},
+              open(f'{A}/review.json', 'w'), indent=2)
     print(f"fixture written to {A}")
 
 if __name__ == '__main__':

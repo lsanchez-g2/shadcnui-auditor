@@ -22,6 +22,10 @@ Rigor rules that apply to every phase, and why:
 - **Never guess a value you can read.** Every finding carries `evidence` naming the tool output it came from, and `source` naming the docs anchor it was checked against. `consolidate.py` rejects findings missing either.
 - **Do not invent, do not remove, do not add.** Anything shadcn does not define goes to `off_spec`, never into the score.
 - **Distinguish "missing" from "named differently".** Search the snapshot before flagging absence.
+- **Absence is not evidence of absence.** A component-scoped snapshot proves only that this component doesn't reference a token — never that the token doesn't exist in the library. A "missing" claim needs a global source (a full variable pull, `search_design_system`, or `ground_truth.md`); without one, the check is `unverified`, not a finding. See `agents/_common.md`.
+- **Verify mode and alias claims from real data, not from a name.** A `dark:`-shaped variable name is not evidence about its Dark cell; a resolved hex from `get_variable_defs` is not evidence a variable is unaliased (that tool exposes no alias chain at all). Both need `ground_truth.md` or a `use_figma` pull to become verified findings; otherwise they're unverified.
+- **A sample is not a census.** Claims about variants outside what was actually sampled are `confidence: inferred`, never `verified`, and never phrased as "all N variants".
+- **shadcn is a reference baseline, not the file's absolute truth.** A real, consistent, system-wide divergence from shadcn (a size scale, a radius, a weight) is still reported at full severity, but the reviewer — not a specialist — may accept it as a deliberate design-system decision (`review.json.accepted_divergences`) rather than a defect, when the evidence supports it.
 
 ## Phase 0 — Orchestrate
 
@@ -94,7 +98,7 @@ The score is computed by code and never by an agent so that two runs on the same
 
 ## Phase 3 — Review
 
-Spawn one agent with `agents/reviewer.md`. It reads `merged.json` and writes `review.json`: executive summary, verdict, top-5, fix order, and resolutions where two specialists disagreed. It may lower a score with a stated reason; it may not add a finding. Its `gaps` come in two kinds: those a specialist can close from the existing snapshot (rerun that specialist), and those that need Figma data the snapshot lacks (a nested set's URL, a Dark-mode screenshot). The second kind goes into your final reply as "needs data: …" — do not rerun anything for them.
+Spawn one agent with `agents/reviewer.md`. It reads `merged.json` and writes `review.json`: executive summary, verdict, top-5, fix order, and resolutions where two specialists disagreed. It may lower a score with a stated reason; it may not add a finding. It may also promote specific findings to `accepted_divergences` — real, verified deviations from shadcn that read as deliberate design-system decisions rather than defects (strict criteria in `agents/reviewer.md`; never for a11y/alias/mode defects, only for on-spec value choices like a size scale or radius). Its `gaps` come in two kinds: those a specialist can close from the existing snapshot (rerun that specialist), and those that need Figma data the snapshot lacks (a nested set's URL, a Dark-mode screenshot). The second kind goes into your final reply as "needs data: …" — do not rerun anything for them.
 
 ## Phase 4 — Render
 
@@ -102,15 +106,16 @@ Spawn one agent with `agents/reviewer.md`. It reads `merged.json` and writes `re
 python3 <skill>/scripts/render_report.py <audit dir>
 ```
 
-Produces `report.html`: self-contained, light/dark aware, severity filters, copy-ready token names, per-fix effort/benefit, and an agent run log. Open it or publish it as an artifact if the session has that tool. Present the file to the user.
+Produces `report.html`: self-contained, light/dark aware, severity filters, copy-ready token names, per-fix effort/benefit, an agent run log, and — when the reviewer accepted any divergences — both the raw and the accepted-divergence-adjusted compliance number, plus a dedicated "Accepted divergences" section (never a silent score change). Open it or publish it as an artifact if the session has that tool. Present the file to the user.
 
 ## Verification before you report
 
 You are done only when all of these are true:
 
 - `consolidate.py` exited 0 and reported eight agent files.
-- `render_report.py` exited 0. Its console line prints the flavor and the docs URLs it embedded — that is the header check; the page renders client-side so `grep` on the HTML body tells you nothing. The `<meta name="audit-flavor">` and `<meta name="audit-docs">` tags in the file head are the static confirmation if you need one.
-- Every `critical` finding in `merged.json` has `confidence: verified`. Unverified criticals are demoted to `high` by the script and listed under "Needs verification" — tell the user.
+- `render_report.py` exited 0. Its console line prints the flavor and the docs URLs it embedded — that is the header check; the page renders client-side so `grep` on the HTML body tells you nothing. The `<meta name="audit-flavor">` and `<meta name="audit-docs">` tags in the file head are the static confirmation if you need one. If any divergences were accepted, the same console line also prints the raw vs. adjusted compliance and which finding ids were excluded.
+- Every `critical` finding in `merged.json` has `confidence: verified`. A `critical` that is `inferred` or `unverified` is demoted to `high` by the script and listed under "Needs verification" — tell the user.
+- No finding in `merged.json` reads as an absence claim (`missing`/`does not exist`/…) with `evidence_scope` other than `global` — `consolidate.py` would already have rejected it, but if you're inspecting output by hand this is the tell that an agent guessed rather than checked.
 - Every entry in `merged.conflicts` is covered by some `review.json.resolutions` item (the reviewer may cover several conflicts in one resolution, so do not compare counts), and if the verdict is BLOCKED it carries `unblock_cost`.
 
 Then give the user the verdict line with the score, the unblock cost if blocked, the two or three findings that matter most, and the file. The report carries the rest.
