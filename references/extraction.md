@@ -87,6 +87,27 @@ Write the result to `variables.json` in the shape this reference defines (`value
 
 When `use_figma` is unavailable (no desktop connection, or the file is view-only), fall back to the user's Variables-panel screenshots → `ground_truth.md`. Variable names alone are never evidence about mode cells — a `dark:` inside a name is a naming finding, nothing more.
 
+**A node whose family maps to more than one shadcn sub-component needs a live structural probe, not just `get_design_context`.** `get_design_context` reconstructs JSX from the render tree; it cannot show `componentPropertyReferences` (which instance property actually drives a nested part), `strokeAlign` (`OUTSIDE` vs `INSIDE`/`CENTER` — the difference between a border that adds to the box and one that doesn't), or auto-layout `itemSpacing`/`layoutPositioning` (`AUTO` vs absolute). A real audit (Avatar) called three "architecture" findings on exactly this gap — a nested badge, group wrapper, and count part all looked wrong in the reconstructed JSX but were correct in the live node. So: whenever a component set's children include a nested or sibling badge, group, or count part (i.e. its shadcn mapping is more than one sub-component), run this **read-only** `use_figma` probe on the set's default variant in addition to `get_design_context`, not instead of it:
+
+```js
+// read-only: structural facts get_design_context cannot show
+const node = await figma.getNodeByIdAsync(NODE_ID);
+const probe = (n) => ({
+  name: n.name,
+  type: n.type,
+  strokeAlign: n.strokeAlign ?? null,
+  layoutMode: n.layoutMode ?? null,
+  itemSpacing: n.itemSpacing ?? null,
+  layoutPositioning: n.layoutPositioning ?? null,
+  componentPropertyReferences: n.componentPropertyReferences ?? null,
+  componentPropertyDefinitions: n.componentPropertyDefinitions ?? null,
+  children: (n.children ?? []).map(probe),
+});
+return probe(node);
+```
+
+Store the result as `nodes/<id>.json.structural_probe` (a sibling key to the `get_design_context`-derived fields, never a replacement). Findings in the `architecture` category on a multi-sub-component node must cite `structural_probe`, not the reconstructed JSX alone — a claim about linked properties, border placement, or auto-layout spacing sourced only from `get_design_context` is `unverified`.
+
 **`get_metadata` without a node-id truncates the page list** (a real file returned 31 of 83 pages with no warning). Verify with the read-only script `return figma.root.children.map(p => ({id: p.id, name: p.name}))` and reconcile before declaring anything absent. If a component is on none of the listed pages, audit the node directly and record `parent_page: unknown`.
 
 **`search_design_system` is one query per call** — the tool advertises a `queries` array but the server clamps it to one; do not batch. It exposes `variableCollectionName`, `description`, library `updatedAt`, and sometimes `scopes` (present for `base/*`, absent for some groups) — useful as a cross-check on `use_figma` output and as the closest thing to a publish signal. It returns `componentKey`, never a node id, so a nested set found this way (an icon set instanced inside the audited component) cannot be pulled into the snapshot; record it as `referenced_sets` in `components.json`, mark its checks unverified, and ask the user for its URL. Results include sibling libraries that publish the same token names; keep only hits whose library is the audited file.
