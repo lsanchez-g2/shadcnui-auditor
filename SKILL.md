@@ -109,7 +109,7 @@ Spawn one agent with `agents/reviewer.md`. It reads `merged.json` and writes `re
 python3 <skill>/scripts/render_report.py <audit dir>
 ```
 
-Produces `report.html`: self-contained, light/dark aware. Built for designers to skim: a verdict card, then fix cards that each carry one plain sentence for how it affects people today (`plain_now`) and one for the proposed solution (`plain_fix`), then five health bars. Everything technical (findings with filters and copy-ready token names, contrast and state tables, token inventory, run log) sits in closed folds under "Technical details". Also: — when the reviewer accepted any divergences — both the raw and the accepted-divergence-adjusted compliance number, plus a dedicated "Accepted divergences" section (never a silent score change). Open it or publish it as an artifact if the session has that tool. Present the file to the user.
+Produces `report.html`: self-contained, light/dark aware. Built for designers to skim: a verdict card, then fix cards that each carry one plain sentence for how it affects people today (`plain_now`) and one for the proposed solution (`plain_fix`), then five health bars. Everything technical (findings with filters and copy-ready token names, contrast and state tables, token inventory, run log) sits in closed folds under "Technical details". When the reviewer accepted any divergences, the health area shows both the raw and the accepted-divergence-adjusted compliance number (never a silent score change), and the divergences are listed under the "Decisions & recommendations" fold. Open it or publish it as an artifact if the session has that tool. Present the file to the user.
 
 ## Verification before you report
 
