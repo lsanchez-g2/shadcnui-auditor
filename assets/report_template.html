@@ -268,6 +268,14 @@ details.fold[open]>summary .chev{transform:rotate(180deg)}
 details.fold>.fbody{padding:14px 18px 18px}
 details.fold>.fbody .flist{border:0;border-radius:0;background:transparent}
 @media print{details.fold>*:not(summary){display:block!important}}
+
+.promptbox{position:relative;margin:0;padding:12px 14px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--muted);font:12.5px/1.6 var(--mono);white-space:pre-wrap;word-break:break-word;color:var(--fg)}
+.fixcard dt.promptl{color:var(--info,var(--low))}
+.fixcard dd .pcopy{margin:8px 0 0 0}
+.allprompt{margin-top:18px;padding:18px 20px;border:1px solid var(--border);border-radius:var(--r);background:var(--card);box-shadow:var(--shadow-sm)}
+.allprompt .hd{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:6px}
+.allprompt h3{margin:0;font-size:15px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--fg)}
+.allprompt .small{margin:0 0 12px}
 </style>
 </head>
 <body>
@@ -300,7 +308,7 @@ const verdictClass=v=>/READY/.test(v)?'ready':/BLOCKED/.test(v)?'blocked':/HEALT
 const isHex=v=>/^#[0-9A-Fa-f]{6}$/.test(String(v||''));
 function fmt(v){if(v===true)return h('span',{cls:'ok'},'✓');if(v===false)return h('span',{cls:'bad'},'✗');if(v==null||v==='')return h('span',{cls:'na'},'—');if(isHex(v))return h('span',{cls:'sw'},h('i',{style:`background:${v}`}),h('code',{},v));return String(v)}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),1600)}
-function copyBtn(text){const b=h('button',{cls:'copy',type:'button'},'copy');b.onclick=e=>{e.stopPropagation();navigator.clipboard?.writeText(text).then(()=>{b.textContent='copied';b.classList.add('done');toast('Copied to clipboard');setTimeout(()=>{b.textContent='copy';b.classList.remove('done')},1400)})};return b}
+function copyBtn(text,label='copy'){const b=h('button',{cls:'copy pcopy',type:'button'},label);b.onclick=e=>{e.stopPropagation();navigator.clipboard?.writeText(text).then(()=>{b.textContent='copied';b.classList.add('done');toast('Copied to clipboard');setTimeout(()=>{b.textContent=label;b.classList.remove('done')},1400)})};return b}
 function countUp(el,to,suffix='',dur=1200){to=Number(to)||0;if(reduced){el.textContent=to+suffix;return}const t0=Date.now();const tick=()=>{const p=Math.min(1,(Date.now()-t0)/dur);const e=1-Math.pow(1-p,3);el.textContent=Math.round(to*e)+suffix;if(p<1)setTimeout(tick,16);else el.textContent=to+suffix};setTimeout(tick,60);setTimeout(()=>{el.textContent=to+suffix},dur+200)}
 function later(fn,ms=80){setTimeout(fn,ms)}
 function section(id,title,sub,count){const s=h('section',{cls:'blk reveal',id});s.append(h('div',{cls:'shead'},h('h2',{},title,count!=null?[' ',h('span',{cls:'pill'},count)]:null),sub?h('p',{cls:'sub'},sub):null));return s}
@@ -360,9 +368,15 @@ if(R.fix_order?.length){
    h('div',{cls:'top'},h('span',{cls:'act'},title),h('span',{},h('span',{cls:'sev '+sv},sv),' ',h('span',{cls:'pill eff'},'effort '+(st.effort||'?')))),
    h('dl',{},
     now?[h('dt',{},hasPlain?'Now':'Cause'),h('dd',{},now)]:null,
-    hasPlain?[h('dt',{cls:'fixl'},'Fix'),h('dd',{},fix)]:(st.action&&!oneLine(st.plain_title)?null:[h('dt',{cls:'fixl'},'Fix'),h('dd',{},oneLine(st.action))])),
+    hasPlain?[h('dt',{cls:'fixl'},'Fix'),h('dd',{},fix)]:(st.action&&!oneLine(st.plain_title)?null:[h('dt',{cls:'fixl'},'Fix'),h('dd',{},oneLine(st.action))]),
+    String(st.plain_prompt||'').trim()?[h('dt',{cls:'promptl'},'Prompt'),h('dd',{},h('pre',{cls:'promptbox'},String(st.plain_prompt).trim()),copyBtn(String(st.plain_prompt).trim(),'copy prompt'))]:null),
    h('div',{cls:'more'},`Covers ${n} finding${n===1?'':'s'} · `,(st.finding_ids||[]).slice(0,6).map(id=>[h('a',{href:'#f-'+id},id),' '])))) }))); }
 else fx.append(h('div',{cls:'empty'},'No fix order provided by reviewer.'));
+if(D.combined_prompt){const all=D.combined_prompt;
+ fx.append(h('div',{cls:'allprompt',id:'prompt-all'},
+  h('div',{cls:'hd'},h('h3',{},'Fix everything at once'),copyBtn(all,'Copy all')),
+  h('p',{cls:'small'},'One prompt that applies every fix above, in order. Paste it into Claude with Figma connected.'),
+  h('pre',{cls:'promptbox'},all)))}
 app.append(fx);
 
 /* ---------- health by area ---------- */

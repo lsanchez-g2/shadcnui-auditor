@@ -42,7 +42,11 @@ The report's first screen is read by designers who will not open a finding. Alon
 - `plain_verdict` (top level): one sentence, what state it is in and what it takes to hand off. No scores, no token names.
 - On every `fix_order` step: `plain_title` (what is wrong, as a short phrase), `plain_now` (**how it affects people today**, one sentence), `plain_fix` (**the proposed solution**, one sentence).
 
-Rules: one sentence each, at most 140 characters, no finding ids, no hex values, no jargon a designer would not say out loud (say "the focus outline" not "ring token binding" unless the token name is the fix). `plain_now` describes the effect on users or on the team's handoff, not the defect itself. `plain_fix` is an action a designer can start immediately. Fields are optional for old files, but `render_report.py` warns when a step lacks them and the report falls back to the technical `action`.
+- On every `fix_order` step also write `plain_prompt`: a ready-to-paste instruction for Claude with the Figma MCP connected, that fixes **only that step**. It is the one plain field allowed to run long (a few lines), because it needs real names and values.
+
+`plain_prompt` rules: imperative, self-contained (the reader has not seen the report). Name the file or component and the exact layers, variables or styles to touch, using the real names and values from the findings. State the target value, say how to confirm it worked, and end with "Change nothing else." No finding ids. Do not combine steps: `render_report.py` builds the "fix everything at once" prompt from the per-step prompts, so never write that one yourself.
+
+Rules for the other fields: one sentence each, at most 140 characters, no finding ids, no hex values, no jargon a designer would not say out loud (say "the focus outline" not "ring token binding" unless the token name is the fix). `plain_now` describes the effect on users or on the team's handoff, not the defect itself. `plain_fix` is an action a designer can start immediately. Fields are optional for old files, but `render_report.py` warns when a step lacks them and the report falls back to the technical `action`.
 
 ## Recommendations
 Structural, not cosmetic: collection reorganisation, convention choice (opacity vs token states — pick one, say why for this file), what to add to component descriptions, how to stage the migration if it is large. Each maps to the shadcn CSS variable or class it aligns with.
@@ -56,7 +60,8 @@ Structural, not cosmetic: collection reorganisation, convention choice (opacity 
   "plain_verdict": "Almost ready: four fixes, about two hours, then it is good to hand off.",
   "top_issues": ["<finding id> — one line", "… up to 5"],
   "fix_order": [{"step": 1, "finding_ids": ["tokens-001","variables-004"], "root_cause": "…", "action": "…", "effort": "M",
-                "plain_title": "The on-state is hard to see", "plain_now": "People with low vision can barely tell a toggle is on.", "plain_fix": "Use the primary color for the on-state track."}],
+                "plain_title": "The on-state is hard to see", "plain_now": "People with low vision can barely tell a toggle is on.", "plain_fix": "Use the primary color for the on-state track.",
+                "plain_prompt": "In the Toggle component, bind the On-state track fill to the primary variable instead of muted, in Light and Dark. Check the contrast against the page background is at least 3:1. Change nothing else."}],
   "resolutions": [{"finding_ids": ["a","b"], "decision": "…", "basis": "snapshot field / docs anchor"}],
   "demotions": [{"finding_id": "…", "from": "high", "to": "medium", "reason": "…"}],
   "gaps": [{"owner_agent": "states", "what": "…"}],

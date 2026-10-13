@@ -63,6 +63,32 @@ def plain_language_too_long(review):
     return bad
 
 
+def _has_prompt(step):
+    return bool(str(step.get('plain_prompt') or '').strip())
+
+
+def plain_prompt_gaps(review):
+    """Step numbers with no plain_prompt. The field is optional (older review.json files lack
+    it), so those steps just get no Prompt row and are left out of the combined prompt."""
+    return [s.get('step') for s in review.get('fix_order') or [] if not _has_prompt(s)]
+
+
+def combined_prompt(review):
+    """One prompt that applies every fix. Built here from the per-step prompts, never written
+    by the reviewer, so the combined block and the cards cannot disagree. Returns '' when no
+    step has a prompt."""
+    steps = [s for s in review.get('fix_order') or [] if _has_prompt(s)]
+    if not steps:
+        return ''
+    n = len(steps)
+    parts = [f"Fix these {n} issue{'s' if n != 1 else ''} in the Figma file, one at a time, in the order below. "
+             f"Finish and check each one before starting the next, and change nothing else."]
+    for i, s in enumerate(steps, 1):
+        title = str(s.get('plain_title') or s.get('action') or '').strip()
+        parts.append(f"{i}. {title}\n{str(s['plain_prompt']).strip()}" if title else f"{i}.\n{str(s['plain_prompt']).strip()}")
+    return "\n\n".join(parts)
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
@@ -91,7 +117,8 @@ def main():
     title = f"{name} Audit"
 
     adjusted = adjusted_scores(merged, review)
-    data = json.dumps({'merged': merged, 'review': review, 'adjusted': adjusted}, ensure_ascii=False)
+    data = json.dumps({'merged': merged, 'review': review, 'adjusted': adjusted,
+                       'combined_prompt': combined_prompt(review)}, ensure_ascii=False)
     # Keep the JSON safe inside a <script> block.
     data = data.replace('</', '<\\/')
 
@@ -133,6 +160,11 @@ def main():
         if long_steps:
             print(f"  WARNING: fix step(s) {long_steps} have plain_now/plain_fix longer than one short sentence "
                   f"(max {PLAIN_MAX_CHARS} chars)", file=sys.stderr)
+    if review.get('fix_order'):
+        pg = plain_prompt_gaps(review)
+        if pg:
+            print(f"  WARNING: fix step(s) {pg} have no plain_prompt — no Prompt row for them and they are left "
+                  f"out of the combined prompt; send them back to the reviewer", file=sys.stderr)
     if not review.get('plain_verdict') and review:
         print("  WARNING: review.json has no plain_verdict — the header falls back to verdict_paragraph", file=sys.stderr)
     if review.get('verdict', '').startswith('BLOCKED') and not review.get('unblock_cost'):

@@ -200,6 +200,7 @@ The skill reads collections, modes, alias chains and scopes itself through a **r
 **First screen, for designers (no scrolling through tables):**
 - Verdict, score, one plain sentence on where it stands, and the cheapest unblock when blocked
 - **What to fix, in order** — each fix is a card with a plain title, **Now** (one sentence: how it affects people today) and **Fix** (one sentence: the proposed solution), plus severity and effort
+- **Prompt** on every card — a copy-ready instruction for Claude with Figma connected that fixes just that issue — and a **Fix everything at once** block below the cards that joins them all
 - Health bars per area, with the raw vs. accepted-divergence-adjusted score when relevant
 
 **Technical details, folded and closed by default:**
