@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+Copy-ready fix prompts.
+
+- **Prompt row on every fix card.** New optional reviewer field `plain_prompt` per `fix_order` step: a ready-to-paste instruction for Claude with the Figma MCP, naming the exact component/layers/variables and target value, with a way to confirm and "Change nothing else." Shown in a monospace box with a copy button. May run several lines, unlike the other plain fields.
+- **"Fix everything at once" block** under the cards, with a Copy all button. Built by `render_report.py` (`combined_prompt`) from the per-step prompts in fix order, never written by the reviewer, so it cannot disagree with the cards. Steps without a prompt are skipped; with no prompts the block is hidden, so old `review.json` files still render.
+- `render_report.py` warns on steps missing `plain_prompt` (`plain_prompt_gaps`). Reviewer writing rules in `agents/reviewer.md`. 2 tests added (31 total).
+
+---
+
 Designer-friendly report. The old report had 13 sections and ~190 KB of tables up front; designers could not tell what to do next.
 
 - **First screen is now: verdict, fix cards, health bars.** Each fix card has a plain title, one sentence for **Now** (how it affects people today) and one for **Fix** (the proposed solution), severity color and effort. Nav rail drops from 13 items to 4.

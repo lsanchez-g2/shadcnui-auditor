@@ -346,6 +346,35 @@ class IntentionalDivergence(unittest.TestCase):
         self.assertIn("'svg'", src)
         self.assertIn("'circle'", src)
 
+    def test_plain_prompt_gaps_lists_steps_without_a_prompt(self):
+        """plain_prompt is optional (old review.json must render); the gap list tells the
+        orchestrator which steps to send back."""
+        sys.path.insert(0, SCRIPTS)
+        import render_report  # noqa: E402
+        review = {'fix_order': [{'step': 1, 'plain_prompt': 'Do X.'}, {'step': 2}, {'step': 3, 'plain_prompt': '  '}]}
+        self.assertEqual(render_report.plain_prompt_gaps(review), [2, 3])
+        self.assertEqual(render_report.plain_prompt_gaps({}), [])
+
+    def test_combined_prompt_joins_step_prompts_in_fix_order(self):
+        """One block that fixes everything: built by the renderer from the per-step prompts so
+        the two can never disagree. Steps without a prompt are skipped; no prompts, no block."""
+        sys.path.insert(0, SCRIPTS)
+        import render_report  # noqa: E402
+        review = {'fix_order': [
+            {'step': 1, 'plain_title': 'First', 'plain_prompt': 'Set A to 1.'},
+            {'step': 2, 'plain_title': 'Second'},
+            {'step': 3, 'plain_title': 'Third', 'plain_prompt': 'Set C to 3.\nThen stop.'},
+        ]}
+        out = render_report.combined_prompt(review)
+        self.assertIn('2 issues', out)
+        self.assertIn('Set A to 1.', out)
+        self.assertIn('Set C to 3.', out)
+        self.assertNotIn('Second', out)
+        self.assertLess(out.index('Set A to 1.'), out.index('Set C to 3.'))
+        self.assertIn('change nothing else', out.lower())
+        self.assertEqual(render_report.combined_prompt({'fix_order': [{'step': 1}]}), '')
+        self.assertEqual(render_report.combined_prompt({}), '')
+
 
 if __name__ == '__main__':
     unittest.main()
