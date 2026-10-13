@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+Designer-friendly report. The old report had 13 sections and ~190 KB of tables up front; designers could not tell what to do next.
+
+- **First screen is now: verdict, fix cards, health bars.** Each fix card has a plain title, one sentence for **Now** (how it affects people today) and one for **Fix** (the proposed solution), severity color and effort. Nav rail drops from 13 items to 4.
+- **Everything technical is folded** under "Technical details" (findings with filters, contrast and states, tokens/parity/architecture, compliant and off-spec, decisions and recommendations, run log), closed by default. Print forces them open.
+- **New optional reviewer fields:** `plain_verdict` and, per `fix_order` step, `plain_title`, `plain_now`, `plain_fix` (one sentence each, max 140 chars). Optional so existing `review.json` files still render, falling back to the technical `action` and `root_cause`. `render_report.py` warns on missing or over-long fields (`plain_language_gaps`, `plain_language_too_long`). Documented in `agents/reviewer.md`.
+- Raw vs accepted-divergence-adjusted score is still always shown, now as a one-line note under the health bars.
+- Tests: 2 added (28 total).
+
 ## 0.4.0 — 2026-09-07
 
 Evidence and confidence discipline, from the Apollo Button audit remediation (`apollo-button-audit-report.html`, node 37:931). Every item below is a mistake that audit made — some already had prose warnings against them (0.2.0), but nothing enforced them, so they still happened. All five are now schema-validated by `consolidate.py`, not just written guidance.

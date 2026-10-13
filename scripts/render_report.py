@@ -36,6 +36,33 @@ def adjusted_scores(merged, review):
             'raw_compliance_pct': raw.get('compliance_pct'), 'raw_health_score': raw.get('health_score')}
 
 
+PLAIN_FIELDS = ('plain_title', 'plain_now', 'plain_fix')
+PLAIN_MAX_CHARS = 140
+
+
+def plain_language_gaps(review):
+    """Step numbers whose designer-facing wording is incomplete. The plain_* fields are optional
+    (older review.json files lack them), so the report falls back to the technical wording for
+    these steps instead of failing; this just tells the orchestrator which steps to send back."""
+    gaps = []
+    for s in review.get('fix_order') or []:
+        if any(not str(s.get(k) or '').strip() for k in PLAIN_FIELDS):
+            gaps.append(s.get('step'))
+    return gaps
+
+
+def plain_language_too_long(review):
+    """Step numbers whose plain_now / plain_fix is not one short sentence."""
+    bad = []
+    for s in review.get('fix_order') or []:
+        for k in ('plain_now', 'plain_fix'):
+            t = str(s.get(k) or '').strip()
+            if t and (len(t) > PLAIN_MAX_CHARS or t.rstrip('.!?').count('. ') > 0):
+                bad.append(s.get('step'))
+                break
+    return bad
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
@@ -97,6 +124,17 @@ def main():
         print(f"  - {u}")
     if not docs:
         print("  WARNING: meta.docs_fetched is empty — the header will not name the spec pages", file=sys.stderr)
+    if review.get('fix_order'):
+        gaps = plain_language_gaps(review)
+        if gaps:
+            print(f"  WARNING: fix step(s) {gaps} lack plain_title/plain_now/plain_fix — those cards fall back "
+                  f"to technical wording; send them back to the reviewer", file=sys.stderr)
+        long_steps = plain_language_too_long(review)
+        if long_steps:
+            print(f"  WARNING: fix step(s) {long_steps} have plain_now/plain_fix longer than one short sentence "
+                  f"(max {PLAIN_MAX_CHARS} chars)", file=sys.stderr)
+    if not review.get('plain_verdict') and review:
+        print("  WARNING: review.json has no plain_verdict — the header falls back to verdict_paragraph", file=sys.stderr)
     if review.get('verdict', '').startswith('BLOCKED') and not review.get('unblock_cost'):
         print("  WARNING: verdict is BLOCKED but review.json has no unblock_cost", file=sys.stderr)
 

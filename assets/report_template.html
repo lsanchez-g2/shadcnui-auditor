@@ -237,6 +237,37 @@ ul.plain li{padding:8px 12px;border:1px solid var(--border);border-radius:var(--
   .hero{grid-template-columns:1fr}
 }
 @media print{.rail,.filters,.theme-btn,.copy{display:none!important}.shell{grid-template-columns:1fr;padding:0}.f .fb{grid-template-rows:1fr!important}.f .fb .inner>div{opacity:1!important;transform:none!important}.reveal{opacity:1!important;transform:none!important}.tblwrap{max-height:none}}
+
+/* ---------- designer-friendly layout ---------- */
+.hero.simple{grid-template-columns:minmax(0,1fr) auto;align-items:center}
+.verdict-line{margin:14px 0 0;font-size:16px;line-height:1.55;max-width:60ch}
+.counts{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:16px;font-size:13px;color:var(--muted-fg);align-items:center}
+.counts b{color:var(--fg);font-weight:600}
+.counts .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.fixcards{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.fixcard{display:grid;grid-template-columns:40px 1fr;gap:16px;padding:18px 20px;border:1px solid var(--border);border-radius:var(--r);background:var(--card);box-shadow:var(--shadow-sm);border-left:4px solid var(--sevc,var(--border-strong))}
+.fixcard.critical{--sevc:var(--crit)}.fixcard.high{--sevc:var(--high)}.fixcard.medium{--sevc:var(--med)}.fixcard.low{--sevc:var(--low)}
+.fixcard .n{width:36px;height:36px;border-radius:50%;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font-weight:600}
+.fixcard .top{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.fixcard .act{font-weight:600;font-size:15px}
+.fixcard dl{margin:10px 0 0;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px}
+.fixcard dt{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted-fg);padding-top:3px}
+.fixcard dt.fixl{color:var(--ok)}
+.fixcard dd{margin:0}
+.fixcard .more{margin-top:10px;font-size:12px;color:var(--muted-fg)}
+.fixcard .more a{color:inherit}
+.note{margin-top:12px;font-size:12.5px;color:var(--muted-fg)}
+details.fold{border:1px solid var(--border);border-radius:var(--r);background:var(--card);margin-bottom:10px;box-shadow:var(--shadow-sm)}
+details.fold>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;padding:14px 18px}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary:hover{background:var(--muted);border-radius:var(--r)}
+details.fold[open]>summary{border-bottom:1px solid var(--border);border-radius:var(--r) var(--r) 0 0}
+details.fold .ttl{font-weight:600}details.fold .one{color:var(--muted-fg);font-size:12.5px;margin-top:1px}
+details.fold .chev{color:var(--muted-fg);transition:transform .25s}
+details.fold[open]>summary .chev{transform:rotate(180deg)}
+details.fold>.fbody{padding:14px 18px 18px}
+details.fold>.fbody .flist{border:0;border-radius:0;background:transparent}
+@media print{details.fold>*:not(summary){display:block!important}}
 </style>
 </head>
 <body>
@@ -284,188 +315,169 @@ function pairChip(fg,bg){return h('span',{cls:'pair',style:`background:${bg};col
  const sys=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';const apply=t=>{root.setAttribute('data-theme',t);document.getElementById('theme-lbl').textContent=t==='dark'?'Dark':'Light';document.getElementById('theme-ico').textContent=t==='dark'?'●':'○'};
  apply(saved||sys);document.getElementById('theme').onclick=()=>{const t=root.getAttribute('data-theme')==='dark'?'light':'dark';apply(t);try{localStorage.setItem('audit-theme',t)}catch(e){}}})();
 
-/* ---------- hero ---------- */
+/* ---------- summary (hero) ---------- */
 const isc=meta.in_scope_components;const comps=Array.isArray(isc)?isc.map(c=>(c&&c.name)||String(c)).join(', '):(isc?String(isc):'');
 const mainScore=isSystem&&score.health_score!=null?score.health_score:(score.compliance_pct??0);
-const hero=h('section',{cls:'blk',id:'overview'});
-const ring=(()=>{const r=58,c=2*Math.PI*r;const svg=h('svg',{viewBox:'0 0 132 132'},h('circle',{cls:'track',cx:66,cy:66,r}),h('circle',{cls:'bar',cx:66,cy:66,r,style:`--c:${c.toFixed(1)}`}));
+const c=M.counts||{};
+const sev=c.by_severity||{};
+const oneLine=t=>String(t||'').trim();
+const sum=h('section',{cls:'blk',id:'summary'});
+const ring=(()=>{const r=58,k=2*Math.PI*r;const svg=h('svg',{viewBox:'0 0 132 132'},h('circle',{cls:'track',cx:66,cy:66,r}),h('circle',{cls:'bar',cx:66,cy:66,r,style:`--c:${k.toFixed(1)}`}));
  const val=h('div',{cls:'val'},h('b',{cls:'num',id:'score-n'},'0'),h('span',{},isSystem?'health / 100':'compliance'));
  const wrap=h('div',{cls:'ring',style:`--score-color:${scoreColor(mainScore)}`},svg,val);
- later(()=>{svg.querySelector('.bar').style.strokeDashoffset=(c*(1-mainScore/100)).toFixed(1);countUp(document.getElementById('score-n'),mainScore,isSystem?'':'%')},120);return wrap})();
-hero.append(h('div',{cls:'hero',style:`--score-color:${scoreColor(mainScore)}`},
+ later(()=>{svg.querySelector('.bar').style.strokeDashoffset=(k*(1-mainScore/100)).toFixed(1);countUp(document.getElementById('score-n'),mainScore,isSystem?'':'%')},120);return wrap})();
+const verdictText=oneLine(R.plain_verdict)||oneLine(R.verdict_paragraph);
+sum.append(h('div',{cls:'hero simple',style:`--score-color:${scoreColor(mainScore)}`},
  h('div',{},
-  h('div',{cls:'eyebrow'},isSystem?'Design system audit':'Component audit',h('span',{},'·'),h('code',{},meta.flavor||'unknown')),
+  h('div',{cls:'eyebrow'},isSystem?'Design system audit':'Component audit',comps?[h('span',{},'·'),comps]:null),
   h('h1',{},meta.file_name||'Figma file'),
   R.verdict?h('div',{style:'margin-top:12px'},h('span',{cls:'badge '+verdictClass(R.verdict)},R.verdict)):null,
-  h('div',{cls:'meta'},
-   comps?h('div',{},'In scope: ',comps,meta.root_node_id?[' · node ',h('code',{},meta.root_node_id)]:null):null,
-   meta.scope_note?h('div',{},meta.scope_note):null,
-   h('div',{},'Audited ',meta.audited_at||'',' against:'),
-   ...(meta.docs_fetched||[]).map(u=>h('div',{},h('a',{href:u,target:'_blank',rel:'noopener'},u))))),
- h('div',{cls:'score'},ring,h('div',{cls:'lbl'},isSystem?'Weighted: pairing 20 · contrast 25 · mode 20 · architecture 20 · state/variant 15':'Checks passed over checks run, off-spec-scoped checks excluded'))));
-/* kpis */
-const c=M.counts||{};
-const kpis=[['checks',c.checks,'checks run',''],['findings',c.findings_merged,'findings',''],['crit',c.by_severity?.critical??0,'critical','crit'],['high',c.by_severity?.high??0,'high','high'],['offspec',c.off_spec??0,'off-spec items',''],['unv',c.unverified??0,'unverified checks','']];
-const kwrap=h('div',{cls:'kpis'},kpis.map(([id,n,l,cl])=>h('div',{cls:'kpi '+cl},h('div',{cls:'n num',id:'kpi-'+id},'0'),h('div',{cls:'l'},l),h('i',{cls:'spark'}))));
-hero.append(kwrap);
-kpis.forEach(([id,n],i)=>setTimeout(()=>countUp(document.getElementById('kpi-'+id),n??0,'',900),120+80*i));
-/* severity bar */
-const total=Math.max(1,c.findings_merged||0);
-const sevbar=h('div',{cls:'sevbar'},SEV.map(s=>h('i',{cls:s,'data-w':(100*(c.by_severity?.[s]||0)/total).toFixed(1)})));
-hero.append(sevbar,h('div',{cls:'legend'},SEV.map(s=>h('span',{},h('i',{style:`background:var(--${s==='critical'?'crit':s==='medium'?'med':s})`}),`${s} ${c.by_severity?.[s]||0}`))));
-later(()=>sevbar.querySelectorAll('i').forEach(i=>i.style.width=i.dataset.w+'%'),150);
-/* dimensions */
-if(score.by_dimension){const W=score.weights||{};const dims=h('div',{cls:'dims'},Object.entries(score.by_dimension).filter(([d])=>isSystem?true:d!=='governance').map(([d,v])=>{const pct=v.rate==null?null:Math.round(v.rate*100);
- return h('div',{cls:'dim',style:`--bar-color:${pct==null?'var(--muted-fg)':scoreColor(pct)}`},h('div',{cls:'t'},h('span',{},d.replace('_',' / ')),h('b',{cls:'num'},pct==null?'—':pct+'%')),h('div',{cls:'bar'},h('i',{'data-w':pct||0})),h('div',{cls:'w'},v.total?`${v.passed}/${v.total} checks`:'no checks',W[d]?` · weight ${W[d]}%`:d==='governance'?' · unweighted':''))}));
- hero.append(dims);later(()=>dims.querySelectorAll('.bar i').forEach((i,k)=>setTimeout(()=>i.style.width=i.dataset.w+'%',60*k)),180)}
-app.append(hero);
-
-/* ---------- summary ---------- */
-const sum=section('summary','Executive summary');
-if(R.verdict_paragraph)sum.append(h('div',{cls:'panel'},h('p',{cls:'lead'},R.verdict_paragraph)));
+  verdictText?h('p',{cls:'verdict-line'},verdictText):null),
+ ring));
 if(R.unblock_cost?.action)sum.append(h('div',{cls:'panel warn',style:'margin-top:12px'},h('b',{},'To unblock: '),R.unblock_cost.action,' ',h('span',{cls:'pill eff'},'effort '+(R.unblock_cost.effort||'?'))));
-if(c.off_spec_scope_checks_excluded)sum.append(h('p',{cls:'small'},`${c.off_spec_scope_checks_excluded} checks on off-spec variants were excluded from the score; their findings are still listed and tagged.`));
-if(ADJ)sum.append(h('div',{cls:'panel',style:'margin-top:12px'},h('b',{},'Accepted-divergence-adjusted: '),`${ADJ.scores.compliance_pct}%`,h('span',{cls:'small'},` (raw ${ADJ.raw_compliance_pct}% — ${ADJ.checks_excluded} check(s) excluded as intentional design-system divergences, not defects)`)));
-if(R.top_issues?.length){sum.append(h('h3',{},'Top issues'));sum.append(h('ol',{cls:'top'},R.top_issues.map(t=>h('li',{},t))))}
-if(M.needs_verification?.length){sum.append(h('h3',{},'Needs verification'));sum.append(h('p',{cls:'small'},'Reported critical but not confirmable from the snapshot; listed as high until verified: ',M.needs_verification.map(id=>h('code',{},id))))}
+const dot=v=>h('i',{cls:'dot',style:`background:var(--${v})`});
+sum.append(h('div',{cls:'counts'},
+ h('span',{},h('b',{},c.findings_merged??0),' issues found'),
+ h('span',{},dot('crit'),h('b',{},sev.critical||0),' critical'),
+ h('span',{},dot('high'),h('b',{},sev.high||0),' high'),
+ h('span',{},dot('med'),h('b',{},(sev.medium||0)+(sev.low||0)),' medium / low'),
+ M.compliant?.length?h('span',{},'· ',h('b',{},M.compliant.length),' things already correct'):null));
 app.append(sum);
 
-/* ---------- fix order ---------- */
-const fx=section('fixes','Fix order','Highest impact first, grouped by root cause.',R.fix_order?.length);
-if(R.fix_order?.length)fx.append(h('ol',{cls:'steps'},R.fix_order.map(s=>h('li',{cls:'step'},h('div',{cls:'dot num'},s.step),h('div',{cls:'body'},h('div',{cls:'act'},h('span',{},s.action),h('span',{cls:'pill eff'},'effort '+(s.effort||'?'))),s.root_cause?h('div',{cls:'rc'},'Root cause: ',s.root_cause):null,h('div',{cls:'ids'},(s.finding_ids||[]).map(id=>h('a',{cls:'pill',href:'#f-'+id,style:'text-decoration:none'},id))))))));
+/* ---------- fixes ---------- */
+const findingById=id=>M.findings.find(f=>f.id===id||f.merged_ids?.includes(id));
+const stepSeverity=st=>{const fs=(st.finding_ids||[]).map(findingById).filter(Boolean);for(const v of SEV)if(fs.some(f=>f.severity===v))return v;return 'medium'};
+const fx=section('fixes','What to fix, in order',R.fix_order?.length?`${R.fix_order.length} step${R.fix_order.length>1?'s':''}, highest impact first.`:null);
+if(R.fix_order?.length){
+ fx.append(h('ol',{cls:'fixcards'},R.fix_order.map(st=>{
+  const sv=stepSeverity(st);const n=(st.finding_ids||[]).length;
+  const title=oneLine(st.plain_title)||oneLine(st.action);
+  const now=oneLine(st.plain_now)||oneLine(st.root_cause);
+  const fix=oneLine(st.plain_fix)||(oneLine(st.plain_title)?'':'');
+  const hasPlain=oneLine(st.plain_now)&&oneLine(st.plain_fix);
+  return h('li',{cls:'fixcard '+sv,id:'step-'+st.step},h('div',{cls:'n'},st.step),h('div',{},
+   h('div',{cls:'top'},h('span',{cls:'act'},title),h('span',{},h('span',{cls:'sev '+sv},sv),' ',h('span',{cls:'pill eff'},'effort '+(st.effort||'?')))),
+   h('dl',{},
+    now?[h('dt',{},hasPlain?'Now':'Cause'),h('dd',{},now)]:null,
+    hasPlain?[h('dt',{cls:'fixl'},'Fix'),h('dd',{},fix)]:(st.action&&!oneLine(st.plain_title)?null:[h('dt',{cls:'fixl'},'Fix'),h('dd',{},oneLine(st.action))])),
+   h('div',{cls:'more'},`Covers ${n} finding${n===1?'':'s'} · `,(st.finding_ids||[]).slice(0,6).map(id=>[h('a',{href:'#f-'+id},id),' '])))) }))); }
 else fx.append(h('div',{cls:'empty'},'No fix order provided by reviewer.'));
 app.append(fx);
 
-/* ---------- findings ---------- */
-const fs=section('findings','Findings','Click a row to expand. Filter by severity or agent, or search any field.',M.findings.length);
+/* ---------- health by area ---------- */
+const hl=section('health','Health by area');
+if(score.by_dimension){const dims=h('div',{cls:'dims',style:'padding:18px 20px;border:1px solid var(--border);border-radius:var(--r);background:var(--card)'},Object.entries(score.by_dimension).filter(([d])=>isSystem?true:d!=='governance').map(([d,v])=>{const pct=v.rate==null?null:Math.round(v.rate*100);
+ return h('div',{cls:'dim',style:`--bar-color:${pct==null?'var(--muted-fg)':scoreColor(pct)}`},h('div',{cls:'t'},h('span',{},d.replace('_',' / ')),h('b',{cls:'num'},pct==null?'—':pct+'%')),h('div',{cls:'bar'},h('i',{'data-w':pct||0})))}));
+ hl.append(dims);later(()=>dims.querySelectorAll('.bar i').forEach((i,k)=>setTimeout(()=>i.style.width=i.dataset.w+'%',60*k)),180)}
+if(ADJ)hl.append(h('p',{cls:'note'},`${(R.accepted_divergences||[]).length} deliberate difference${(R.accepted_divergences||[]).length===1?'':'s'} from shadcn accepted. Score with ${ADJ.checks_excluded} check${ADJ.checks_excluded===1?'':'s'} excluded: `,h('b',{},ADJ.scores.compliance_pct+'%'),`, raw ${ADJ.raw_compliance_pct}%.`));
+if(c.off_spec_scope_checks_excluded)hl.append(h('p',{cls:'note'},`${c.off_spec_scope_checks_excluded} checks on off-spec variants were left out of the score; their findings are still listed and tagged.`));
+app.append(hl);
+
+/* ---------- technical details (all folded) ---------- */
+const dt=section('details','Technical details','For when you need the numbers behind a fix. Closed by default.');
+function fold(title,one,count,build,open){const d=h('details',{cls:'fold'});if(open)d.open=true;d.append(h('summary',{},h('div',{},h('div',{cls:'ttl'},title),h('div',{cls:'one'},one)),count!=null?h('span',{cls:'pill'},count):h('span',{}),h('span',{cls:'chev'},'⌄')));const b=h('div',{cls:'fbody'});build(b);d.append(b);dt.append(d);return d}
+
+/* findings */
 const filt={sev:new Set(SEV),agent:null,q:''};
-const agents=[...new Set(M.findings.flatMap(f=>f.agents||[f.agent]))].sort();
-const sevChips=h('div',{cls:'chips'},SEV.map(s=>h('button',{cls:'chip on',type:'button','data-s':s},s,h('span',{cls:'c num'},c.by_severity?.[s]||0))));
-sevChips.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{const s=b.dataset.s;filt.sev.has(s)?filt.sev.delete(s):filt.sev.add(s);b.classList.toggle('on');draw()});
-const agChips=h('div',{cls:'chips'},h('div',{cls:'glide',id:'ag-glide',style:'opacity:0'}),h('button',{cls:'chip on',type:'button','data-a':''},'all agents'),agents.map(a=>h('button',{cls:'chip',type:'button','data-a':a},a)));
-function moveGlide(container,btn){const g=container.querySelector('.glide');if(!btn){g.style.opacity=0;return}const r=btn.getBoundingClientRect(),cr=container.getBoundingClientRect();g.style.opacity=1;g.style.width=r.width+'px';g.style.transform=`translateX(${r.left-cr.left}px)`}
-agChips.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{filt.agent=b.dataset.a||null;agChips.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===b));moveGlide(agChips,b);draw()});
-const search=h('input',{cls:'search',placeholder:'Search findings…',type:'search'});search.oninput=e=>{filt.q=e.target.value.toLowerCase();draw()};
-fs.append(h('div',{cls:'filters'},sevChips,agChips,search));
-const list=h('div',{cls:'flist'});fs.append(list);
 const cards=new Map();
-for(const f of M.findings){
- const head=h('button',{cls:'fh',type:'button','aria-expanded':'false'},
-  h('span',{cls:'sev '+f.severity},f.severity),
-  h('div',{},h('div',{cls:'el'},f.element),h('div',{cls:'lp'},h('span',{},f.layer_path),f.node_id?h('code',{},f.node_id):null,f.off_spec_scope?h('span',{cls:'tag'},'off-spec scope'):null,f.demoted_from?h('span',{cls:'pill'},'was '+f.demoted_from):null)),
-  h('span',{cls:'pill eff',title:'effort'},f.effort),
-  h('span',{cls:'sc num'},h('span',{},f.current_score??'–'),h('span',{cls:'arrow'}),h('b',{},f.final_score??'–')),
-  h('span',{cls:'chev'},'⌄'));
- const body=h('div',{cls:'fb'},h('div',{},h('div',{cls:'inner'},
-  h('div',{cls:'full'},h('b',{cls:'k'},'Current → expected'),h('div',{cls:'vals'},h('code',{},f.current_value||'—'),h('span',{cls:'to'},'→'),h('code',{},f.expected_value))),
-  h('div',{cls:'full'},h('b',{cls:'k'},'Fix',copyBtn(f.fix)),f.fix),
-  h('div',{},h('b',{cls:'k'},'Benefit'),f.benefit||'—'),
-  h('div',{},h('b',{cls:'k'},'Source'),h('a',{href:f.source,target:'_blank',rel:'noopener',cls:'mono',style:'word-break:break-all'},f.source)),
-  h('div',{cls:'full'},h('b',{cls:'k'},'Evidence'),h('ul',{},(f.evidence_all||[f.evidence]).map(e=>h('li',{cls:'mono'},e)))),
-  h('div',{cls:'full small'},`${f.category} · ${f.dimension} · ${f.confidence} · ${(f.agents||[f.agent]).join(', ')} · ${(f.merged_ids||[f.id]).join(', ')}`))));
- const card=h('article',{cls:'f '+f.severity,id:'f-'+f.id},head,body);
- head.onclick=()=>{const o=card.classList.toggle('open');head.setAttribute('aria-expanded',o)};
- cards.set(f,card);list.append(card);
-}
-function draw(){let n=0;for(const[f,card]of cards){const show=filt.sev.has(f.severity)&&(!filt.agent||(f.agents||[f.agent]).includes(filt.agent))&&(!filt.q||JSON.stringify(f).toLowerCase().includes(filt.q));card.classList.toggle('hide',!show);if(show)n++}
- let e=list.querySelector('.empty');if(!n){if(!e)list.append(h('div',{cls:'empty'},'Nothing matches.'))}else e?.remove()}
-app.append(fs);
-/* open a finding when linked from fix order */
-addEventListener('hashchange',()=>{const el=document.querySelector(location.hash);if(el?.classList.contains('f')){el.classList.add('open');el.querySelector('.fh').setAttribute('aria-expanded','true')}});
+const fdet=fold('All findings','Exact layers, values, token names and evidence',M.findings.length,body=>{
+ const agents=[...new Set(M.findings.flatMap(f=>f.agents||[f.agent]))].sort();
+ const sevChips=h('div',{cls:'chips'},SEV.map(s=>h('button',{cls:'chip on',type:'button','data-s':s},s,h('span',{cls:'c num'},sev[s]||0))));
+ sevChips.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{const s=b.dataset.s;filt.sev.has(s)?filt.sev.delete(s):filt.sev.add(s);b.classList.toggle('on');draw()});
+ const agChips=h('div',{cls:'chips'},h('button',{cls:'chip on',type:'button','data-a':''},'all agents'),agents.map(a=>h('button',{cls:'chip',type:'button','data-a':a},a)));
+ agChips.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{filt.agent=b.dataset.a||null;agChips.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===b));draw()});
+ const search=h('input',{cls:'search',placeholder:'Search findings…',type:'search'});search.oninput=e=>{filt.q=e.target.value.toLowerCase();draw()};
+ body.append(h('div',{cls:'filters'},sevChips,agChips,search));
+ const list=h('div',{cls:'flist'});body.append(list);
+ for(const f of M.findings){
+  const head=h('button',{cls:'fh',type:'button','aria-expanded':'false'},
+   h('span',{cls:'sev '+f.severity},f.severity),
+   h('div',{},h('div',{cls:'el'},f.element),h('div',{cls:'lp'},h('span',{},f.layer_path),f.node_id?h('code',{},f.node_id):null,f.off_spec_scope?h('span',{cls:'tag'},'off-spec scope'):null,f.demoted_from?h('span',{cls:'pill'},'was '+f.demoted_from):null)),
+   h('span',{cls:'pill eff',title:'effort'},f.effort),
+   h('span',{cls:'sc num'},h('span',{},f.current_score??'–'),h('span',{cls:'arrow'}),h('b',{},f.final_score??'–')),
+   h('span',{cls:'chev'},'⌄'));
+  const fbody=h('div',{cls:'fb'},h('div',{},h('div',{cls:'inner'},
+   h('div',{cls:'full'},h('b',{cls:'k'},'Current → expected'),h('div',{cls:'vals'},h('code',{},f.current_value||'—'),h('span',{cls:'to'},'→'),h('code',{},f.expected_value))),
+   h('div',{cls:'full'},h('b',{cls:'k'},'Fix',copyBtn(f.fix)),f.fix),
+   h('div',{},h('b',{cls:'k'},'Benefit'),f.benefit||'—'),
+   h('div',{},h('b',{cls:'k'},'Source'),h('a',{href:f.source,target:'_blank',rel:'noopener',cls:'mono',style:'word-break:break-all'},f.source)),
+   h('div',{cls:'full'},h('b',{cls:'k'},'Evidence'),h('ul',{},(f.evidence_all||[f.evidence]).map(e=>h('li',{cls:'mono'},e)))),
+   h('div',{cls:'full small'},`${f.category} · ${f.dimension} · ${f.confidence} · ${(f.agents||[f.agent]).join(', ')} · ${(f.merged_ids||[f.id]).join(', ')}`))));
+  const card=h('article',{cls:'f '+f.severity,id:'f-'+f.id},head,fbody);
+  head.onclick=()=>{const o=card.classList.toggle('open');head.setAttribute('aria-expanded',o)};
+  cards.set(f,card);list.append(card);
+ }
+ function draw(){let n=0;for(const[f,card]of cards){const show=filt.sev.has(f.severity)&&(!filt.agent||(f.agents||[f.agent]).includes(filt.agent))&&(!filt.q||JSON.stringify(f).toLowerCase().includes(filt.q));card.classList.toggle('hide',!show);if(show)n++}
+  let e=list.querySelector('.empty');if(!n){if(!e)list.append(h('div',{cls:'empty'},'Nothing matches.'))}else e?.remove()}
+});
+/* links from a fix card open the findings fold and the finding */
+addEventListener('hashchange',()=>{const el=document.querySelector(location.hash);if(el?.classList.contains('f')){fdet.open=true;el.classList.add('open');el.querySelector('.fh').setAttribute('aria-expanded','true');el.scrollIntoView({block:'center'})}});
 
-/* ---------- tokens ---------- */
-const tk=section('tokens','Token inventory vs. shadcn baseline','Presence, mode coverage and aliasing of every baseline token.');
-if(T.tokens?.inventory?.length)tk.append(table(['token','present','collection','mode_coverage','aliased','notes'],T.tokens.inventory,(r,c)=>c==='token'?h('code',{},r[c]):fmt(r[c])));else tk.append(h('div',{cls:'empty'},'No inventory table from tokens agent.'));
-app.append(tk);
+/* contrast + states */
+fold('Contrast & states',(()=>{const m=T.contrast?.matrix||{};let tot=0,bad=0;for(const k of Object.keys(m))for(const r of m[k]){if(r.exempt)continue;tot++;if(!(r.aa||r.aa_large_ui))bad++}return tot?`${bad} of ${tot} color pairs below threshold`:'WCAG ratios and variant × state coverage'})(),null,body=>{
+ if(T.contrast?.matrix){for(const mode of Object.keys(T.contrast.matrix)){body.append(h('h3',{},'Contrast · '+mode));
+  body.append(table(['pair','sample','surface_hex','foreground_hex','backdrop_hex','ratio','aa','aa_large_ui','aaa','exempt'],T.contrast.matrix[mode],(r,k)=>{
+   if(k==='sample')return isHex(r.surface_hex)&&isHex(r.foreground_hex)?pairChip(r.foreground_hex,r.surface_hex):h('span',{cls:'na'},'—');
+   if(k==='ratio'){const cls=r.exempt?'exempt':r.aa?'pass':r.aa_large_ui?'large':'fail';return h('span',{cls:'ratio '+cls},String(r.ratio),':1')}
+   if(k==='pair')return h('code',{},r[k]);return fmt(r[k])},{aa_large_ui:'AA large / UI',aa:'AA',aaa:'AAA'}))}}
+ else body.append(h('div',{cls:'empty'},'No contrast matrix.'));
+ if(T.states?.coverage){for(const[set,x]of Object.entries(T.states.coverage)){body.append(h('h3',{},'States · '+set,' ',h('span',{cls:'pill'},'convention: '+(x.convention||'unknown'))));
+  const cols=['variant',...(x.states||[])];const rows=(x.variants||[]).map(v=>{const o={variant:v};for(const st of x.states||[])o[st]=x.cells?.[`${v}|${st}`]||'missing';return o});
+  body.append(table(cols,rows,(r,k)=>k==='variant'?h('code',{},r[k]):h('span',{cls:'cell '+r[k]},h('i',{}),r[k])))}}
+ else body.append(h('div',{cls:'empty'},'No coverage matrices.'))});
 
-/* ---------- contrast ---------- */
-const ct=section('contrast','Contrast matrix','WCAG 2.1 ratios, alpha composited over the real backdrop. Sort any column.');
-if(T.contrast?.matrix){for(const mode of Object.keys(T.contrast.matrix)){ct.append(h('h3',{},mode));
- ct.append(table(['pair','sample','surface_hex','foreground_hex','backdrop_hex','ratio','aa','aa_large_ui','aaa','exempt'],T.contrast.matrix[mode],(r,c)=>{
-  if(c==='sample')return isHex(r.surface_hex)&&isHex(r.foreground_hex)?pairChip(r.foreground_hex,r.surface_hex):h('span',{cls:'na'},'—');
-  if(c==='ratio'){const cls=r.exempt?'exempt':r.aa?'pass':r.aa_large_ui?'large':'fail';return h('span',{cls:'ratio '+cls},String(r.ratio),':1')}
-  if(c==='pair')return h('code',{},r[c]);return fmt(r[c])},{aa_large_ui:'AA large / UI',aa:'AA',aaa:'AAA'}))}}
-else ct.append(h('div',{cls:'empty'},'No contrast matrix.'));
-app.append(ct);
+/* tokens, parity, architecture */
+fold('Tokens, parity & architecture','Token inventory, alias chains, light/dark, shadcn match, handoff readiness',null,body=>{
+ if(T.tokens?.inventory?.length){body.append(h('h3',{},'Token inventory'));body.append(table(['token','present','collection','mode_coverage','aliased','notes'],T.tokens.inventory,(r,k)=>k==='token'?h('code',{},r[k]):fmt(r[k])))}
+ if(T.components?.parity){const sets=Object.entries(T.components.parity);const axes=['naming','variants','sizes','states','tokens','layout','typography','anatomy','props','a11y'];
+  body.append(h('h3',{},'Component parity'));body.append(table(['component',...axes],sets.map(([n,p])=>({component:n,...(p.axes||{})})),(r,k)=>k==='component'?h('strong',{},r[k]):h('span',{cls:'axis '+(r[k]||'unverified')},r[k]||'—')))}
+ if(T.governance?.readiness){body.append(h('h3',{},'Handoff readiness'));const rows=Object.entries(T.governance.readiness).map(([n,p])=>({component:n,...p}));body.append(table(['component','published','description','hidden_layers','naming_consistent','code_connect_ready'],rows,(r,k)=>k==='component'?h('strong',{},r[k]):fmt(r[k])))}
+ if(T.variables?.chains?.length){body.append(h('h3',{},'Alias chains'));body.append(table(['variable','tier','alias_of','resolves_to','status'],T.variables.chains,(r,k)=>k==='status'?h('span',{cls:'status '+(r[k]==='ok'?'ok':r[k]==='unverified'?'na':'bad')},r[k]):k==='variable'?h('code',{},r[k]):fmt(r[k])))}
+ if(T.modes?.parity?.length){body.append(h('h3',{},'Mode parity'));body.append(table(['token','light','dark','identical','deliberate'],T.modes.parity,(r,k)=>k==='token'?h('code',{},r[k]):fmt(r[k])))}
+ if(T.styles?.styles?.length){body.append(h('h3',{},'Styles'));body.append(table(['style','kind','maps_to','status'],T.styles.styles,(r,k)=>k==='style'?h('code',{},r[k]):k==='status'?h('span',{cls:'status '+(r[k]==='ok'?'ok':'bad')},r[k]):fmt(r[k])))}
+ if(!body.children.length)body.append(h('div',{cls:'empty'},'No tables from these agents.'))});
 
-/* ---------- coverage ---------- */
-const cv=section('coverage','State & variant coverage');
-if(T.states?.coverage){for(const[set,x]of Object.entries(T.states.coverage)){cv.append(h('h3',{},set,' ',h('span',{cls:'pill'},'convention: '+(x.convention||'unknown'))));
- const cols=['variant',...(x.states||[])];const rows=(x.variants||[]).map(v=>{const o={variant:v};for(const s of x.states||[])o[s]=x.cells?.[`${v}|${s}`]||'missing';return o});
- cv.append(table(cols,rows,(r,c)=>c==='variant'?h('code',{},r[c]):h('span',{cls:'cell '+r[c]},h('i',{}),r[c])))}}
-else cv.append(h('div',{cls:'empty'},'No coverage matrices.'));
-app.append(cv);
+/* compliant + off-spec + unverified */
+fold('Already correct & off-spec','What to leave alone, what shadcn does not define, what could not be checked',`${M.compliant.length} + ${M.off_spec.length}`,body=>{
+ body.append(h('h3',{},'Already correct, do not touch'));
+ body.append(M.compliant.length?h('ul',{cls:'plain'},M.compliant.map(x=>h('li',{},h('span',{},x.item),h('span',{cls:'pill'},x.agent)))):h('div',{cls:'empty'},'None.'));
+ body.append(h('h3',{},'Off-spec inventory'));
+ if(M.off_spec.length)body.append(table(['item','reason','recommendation','agent'],M.off_spec));else body.append(h('div',{cls:'empty'},'Nothing outside the shadcn spec.'));
+ if(M.unverified?.length){body.append(h('h3',{},`Unverified checks (${M.unverified.length})`));body.append(table(['check','missing','agent'],M.unverified))}
+ if(M.needs_verification?.length){body.append(h('h3',{},'Needs verification'));body.append(h('p',{cls:'small'},'Reported critical but not confirmable from the snapshot; listed as high until verified: ',M.needs_verification.map(id=>h('code',{},id))))}
+ if(M.conflicts?.length){body.append(h('h3',{},'Specialist disagreements'));body.append(h('div',{cls:'grid2'},M.conflicts.map(k=>{const res=(R.resolutions||[]).find(r=>r.finding_ids?.some(id=>k.finding_ids.includes(id)));return h('div',{cls:'card'},h('div',{cls:'h'},k.element),h('div',{cls:'small'},k.layer_path),h('ul',{style:'margin:8px 0;padding-left:16px'},k.expected_values.map(v=>h('li',{cls:'mono'},v))),res?h('div',{},h('b',{},'Resolution: '),res.decision,' ',h('span',{cls:'small'},'(',res.basis,')')):h('div',{cls:'bad small'},'Unresolved'))})))}});
 
-/* ---------- parity ---------- */
-const pr=section('parity','Component parity','Per-axis result against the fetched shadcn API.');
-if(T.components?.parity){const sets=Object.entries(T.components.parity);const axes=['naming','variants','sizes','states','tokens','layout','typography','anatomy','props','a11y'];
- pr.append(table(['component',...axes],sets.map(([n,p])=>({component:n,...(p.axes||{})})),(r,c)=>c==='component'?h('strong',{},r[c]):h('span',{cls:'axis '+(r[c]||'unverified')},r[c]||'—')))}
-else pr.append(h('div',{cls:'empty'},'No parity table.'));
-if(T.governance?.readiness){pr.append(h('h3',{},'Handoff readiness'));const rows=Object.entries(T.governance.readiness).map(([n,p])=>({component:n,...p}));pr.append(table(['component','published','description','hidden_layers','naming_consistent','code_connect_ready'],rows,(r,c)=>c==='component'?h('strong',{},r[c]):fmt(r[c])))}
-app.append(pr);
-
-/* ---------- architecture ---------- */
-const ar=section('arch','Architecture');
-let anyArch=false;
-if(T.variables?.chains?.length){anyArch=true;ar.append(h('h3',{},'Alias chains'));ar.append(table(['variable','tier','alias_of','resolves_to','status'],T.variables.chains,(r,c)=>c==='status'?h('span',{cls:'status '+(r[c]==='ok'?'ok':r[c]==='unverified'?'na':'bad')},r[c]):c==='variable'?h('code',{},r[c]):fmt(r[c])))}
-if(T.modes?.parity?.length){anyArch=true;ar.append(h('h3',{},'Mode parity'));ar.append(table(['token','light','dark','identical','deliberate'],T.modes.parity,(r,c)=>c==='token'?h('code',{},r[c]):fmt(r[c])))}
-if(T.styles?.styles?.length){anyArch=true;ar.append(h('h3',{},'Styles'));ar.append(table(['style','kind','maps_to','status'],T.styles.styles,(r,c)=>c==='style'?h('code',{},r[c]):c==='status'?h('span',{cls:'status '+(r[c]==='ok'?'ok':'bad')},r[c]):fmt(r[c])))}
-if(!anyArch)ar.append(h('div',{cls:'empty'},'No architecture tables.'));
-app.append(ar);
-
-/* ---------- compliant ---------- */
-const cp=section('compliant','Already compliant','Correct today — do not touch.',M.compliant.length);
-cp.append(h('ul',{cls:'plain'},M.compliant.map(x=>h('li',{},h('span',{},x.item),h('span',{cls:'pill'},x.agent)))));
-app.append(cp);
-
-/* ---------- off-spec ---------- */
-const os=section('offspec','Off-spec inventory','Present in Figma, not defined by shadcn. Remove, or document as an intentional extension.',M.off_spec.length);
-if(M.off_spec.length)os.append(table(['item','reason','recommendation','agent'],M.off_spec));else os.append(h('div',{cls:'empty'},'Nothing outside the shadcn spec.'));
-if(M.unverified?.length){os.append(h('h3',{},`Unverified checks (${M.unverified.length})`));os.append(table(['check','missing','agent'],M.unverified))}
-if(M.conflicts?.length){os.append(h('h3',{},'Specialist disagreements'));os.append(h('div',{cls:'grid2'},M.conflicts.map(k=>{const res=(R.resolutions||[]).find(r=>r.finding_ids?.some(id=>k.finding_ids.includes(id)));return h('div',{cls:'card'},h('div',{cls:'h'},k.element),h('div',{cls:'small'},k.layer_path),h('ul',{style:'margin:8px 0;padding-left:16px'},k.expected_values.map(v=>h('li',{cls:'mono'},v))),res?h('div',{},h('b',{},'Resolution: '),res.decision,' ',h('span',{cls:'small'},'(',res.basis,')')):h('div',{cls:'bad small'},'Unresolved'))})))}
-app.append(os);
-
-/* ---------- accepted divergences ---------- */
+/* divergences + recommendations + audit trail */
 const divergences=R.accepted_divergences||[];
-if(divergences.length){
- const dv=section('divergences','Accepted divergences','Real, verified differences from shadcn/ui that the reviewer confirmed are deliberate design-system decisions — documented, not defects. Excluded from the adjusted compliance number above; still listed here so the reasoning is auditable.',divergences.length);
- dv.append(h('div',{cls:'grid2'},divergences.map(d=>{
-  const fs=(d.finding_ids||[]).map(id=>M.findings.find(f=>f.id===id||f.merged_ids?.includes(id))).filter(Boolean);
-  return h('div',{cls:'card'},
-   h('div',{cls:'h'},(d.finding_ids||[]).join(', ')),
-   h('div',{},h('b',{},'Rationale: '),d.rationale),
-   d.evidence?h('div',{cls:'small'},h('b',{},'Evidence: '),d.evidence):null,
-   fs.length?h('ul',{style:'margin:8px 0;padding-left:16px'},fs.map(f=>h('li',{cls:'small'},h('span',{},f.element),' — ',h('code',{},f.current_value),' kept (spec expects ',h('code',{},f.expected_value),')'))):null)
- })));
- app.append(dv);
-}
+fold('Decisions & recommendations','Accepted differences from shadcn, structural suggestions, reviewer demotions',`${divergences.length} + ${(R.recommendations||[]).length}`,body=>{
+ if(divergences.length){body.append(h('h3',{},'Accepted divergences'));body.append(h('p',{cls:'small'},'Real, verified differences from shadcn the reviewer confirmed are deliberate design-system decisions. Excluded from the adjusted score; listed so the reasoning stays auditable.'));
+  body.append(h('div',{cls:'grid2'},divergences.map(d=>{
+   const fs=(d.finding_ids||[]).map(findingById).filter(Boolean);
+   return h('div',{cls:'card'},h('div',{cls:'h'},(d.finding_ids||[]).join(', ')),h('div',{},h('b',{},'Rationale: '),d.rationale),d.evidence?h('div',{cls:'small'},h('b',{},'Evidence: '),d.evidence):null,
+    fs.length?h('ul',{style:'margin:8px 0;padding-left:16px'},fs.map(f=>h('li',{cls:'small'},h('span',{},f.element),' — ',h('code',{},f.current_value),' kept (spec expects ',h('code',{},f.expected_value),')'))):null)})))}
+ body.append(h('h3',{},'Recommendations'));
+ if(R.recommendations?.length)body.append(h('div',{cls:'grid2'},R.recommendations.map(r=>h('div',{cls:'card'},h('div',{cls:'h'},r.title),h('div',{},r.rationale),r.aligns_with?h('div',{cls:'small',style:'margin-top:6px'},'Aligns with ',h('code',{},r.aligns_with)):null))));else body.append(h('div',{cls:'empty'},'None.'));
+ if(R.demotions?.length){body.append(h('h3',{},'Reviewer demotions'));body.append(table(['finding_id','from','to','reason'],R.demotions,(r,k)=>k==='finding_id'?h('code',{},r[k]):fmt(r[k])))}
+ if(R.gaps?.length){body.append(h('h3',{},'Gaps flagged for re-run'));body.append(table(['owner_agent','what'],R.gaps))}});
 
-/* ---------- recommendations ---------- */
-const rc=section('reco','Recommendations','Structural changes, mapped to the shadcn convention they align with.');
-if(R.recommendations?.length)rc.append(h('div',{cls:'grid2'},R.recommendations.map(r=>h('div',{cls:'card'},h('div',{cls:'h'},r.title),h('div',{},r.rationale),r.aligns_with?h('div',{cls:'small',style:'margin-top:6px'},'Aligns with ',h('code',{},r.aligns_with)):null))));else rc.append(h('div',{cls:'empty'},'None.'));
-if(R.demotions?.length){rc.append(h('h3',{},'Reviewer demotions'));rc.append(table(['finding_id','from','to','reason'],R.demotions,(r,c)=>c==='finding_id'?h('code',{},r[c]):fmt(r[c])))}
-if(R.gaps?.length){rc.append(h('h3',{},'Gaps flagged for re-run'));rc.append(table(['owner_agent','what'],R.gaps))}
-app.append(rc);
-
-/* ---------- log ---------- */
-const lg=section('log','Run log','Which specialists ran and what they produced.');
-lg.append(table(['agent','file','checks','findings','unverified'],Object.entries(M.agents||{}).map(([a,v])=>({agent:a,...v}))));
-if(M.missing_agents?.length)lg.append(h('p',{cls:'bad'},'Missing agents: ',M.missing_agents.join(', ')));
-if(Object.keys(M.notes||{}).length)lg.append(h('div',{cls:'grid2',style:'margin-top:12px'},Object.entries(M.notes).map(([a,n])=>h('div',{cls:'card'},h('div',{cls:'h'},a),h('div',{cls:'small'},n)))));
-app.append(lg);
+fold('How this was audited','Spec sources and agent run log',`${Object.keys(M.agents||{}).length} agents`,body=>{
+ body.append(h('p',{cls:'small',style:'margin-top:0'},'Audited ',meta.audited_at||'',' against: ',...(meta.docs_fetched||[]).flatMap(u=>[h('a',{href:u,target:'_blank',rel:'noopener'},u),' ']),meta.root_node_id?[' · node ',h('code',{},meta.root_node_id)]:null,' · flavor ',h('code',{},meta.flavor||'unknown')));
+ if(meta.scope_note)body.append(h('p',{cls:'small'},meta.scope_note));
+ body.append(table(['agent','file','checks','findings','unverified'],Object.entries(M.agents||{}).map(([a,v])=>({agent:a,...v}))));
+ if(M.missing_agents?.length)body.append(h('p',{cls:'bad'},'Missing agents: ',M.missing_agents.join(', ')));
+ if(Object.keys(M.notes||{}).length)body.append(h('div',{cls:'grid2',style:'margin-top:12px'},Object.entries(M.notes).map(([a,n])=>h('div',{cls:'card'},h('div',{cls:'h'},a),h('div',{cls:'small'},n)))))});
+app.append(dt);
 
 /* ---------- rail nav + glide + reveal ---------- */
 const nav=document.getElementById('nav'),glide=document.getElementById('glide');
 const secs=[...document.querySelectorAll('section.blk')];
-for(const s of secs){const t=s.querySelector('h2')?.firstChild?.textContent||(s.querySelector('h1')?'Overview':s.id);const cnt=s.querySelector('h2 .pill')?.textContent;nav.append(h('a',{href:'#'+s.id,'data-id':s.id},t,cnt?h('span',{cls:'cnt'},cnt):null))}
+for(const s of secs){const t=s.id==='summary'?'Summary':(s.querySelector('h2')?.firstChild?.textContent||s.id);const cnt=s.querySelector('h2 .pill')?.textContent;nav.append(h('a',{href:'#'+s.id,'data-id':s.id},t,cnt?h('span',{cls:'cnt'},cnt):null))}
 function setActive(id){const a=nav.querySelector(`a[data-id="${id}"]`);if(!a)return;nav.querySelectorAll('a').forEach(x=>x.classList.toggle('active',x===a));if(innerWidth<=960){glide.style.opacity=0;return}glide.style.opacity=1;glide.style.transform=`translateY(${a.offsetTop}px)`}
 const io=new IntersectionObserver(es=>{for(const e of es){if(e.isIntersecting){e.target.classList.add('in')}}},{threshold:.08});
 secs.forEach(s=>io.observe(s));
 const io2=new IntersectionObserver(es=>{const vis=es.filter(e=>e.isIntersecting).sort((a,b)=>a.boundingClientRect.top-b.boundingClientRect.top);if(vis[0])setActive(vis[0].target.id)},{rootMargin:'-20% 0px -60% 0px',threshold:0});
 secs.forEach(s=>io2.observe(s));
-setActive('overview');
-later(()=>moveGlide(agChips,agChips.querySelector('.chip.on')),200);
-addEventListener('resize',()=>moveGlide(agChips,agChips.querySelector('.chip.on')));
+setActive('summary');
 </script>
 </body>
 </html>
