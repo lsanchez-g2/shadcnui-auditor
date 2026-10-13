@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Fixed: reviewer demotions never reached the report's counts or badges.** `render_report.py` listed `review.json.demotions` in a fold but kept the pre-review severity everywhere else, so a demoted critical still showed in the header count and wore a red CRITICAL badge. New `apply_demotions` applies them before rendering: changes the finding's severity, records `demoted_from`, recomputes the by-severity counts. A demotion can never raise a severity, matches a finding by `id` or any `merged_ids`, and unknown ids are ignored. Found on the Apollo Toggle audit (a 0.01%-opacity fill the reviewer correctly demoted from critical). Regression test added (32 total).
+
+---
+
 Copy-ready fix prompts.
 
 - **Prompt row on every fix card.** New optional reviewer field `plain_prompt` per `fix_order` step: a ready-to-paste instruction for Claude with the Figma MCP, naming the exact component/layers/variables and target value, with a way to confirm and "Change nothing else." Shown in a monospace box with a copy button. May run several lines, unlike the other plain fields.
