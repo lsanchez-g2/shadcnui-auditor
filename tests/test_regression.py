@@ -334,6 +334,18 @@ class IntentionalDivergence(unittest.TestCase):
         self.assertEqual(render_report.plain_language_too_long({'fix_order': [ok]}), [])
         self.assertEqual(render_report.plain_language_too_long({'fix_order': [long, multi]}), [2, 3])
 
+    def test_template_creates_svg_elements_in_the_svg_namespace(self):
+        """The score ring is built with the h() helper. document.createElement('svg') makes an
+        HTML-namespace element that lays out at width 0, so the ring silently never drew
+        (the hero screenshot in the README showed a number with no arc). svg/circle must go
+        through createElementNS."""
+        tpl = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', 'report_template.html')
+        with open(tpl, encoding='utf-8') as f:
+            src = f.read()
+        self.assertIn("createElementNS('http://www.w3.org/2000/svg'", src)
+        self.assertIn("'svg'", src)
+        self.assertIn("'circle'", src)
+
 
 if __name__ == '__main__':
     unittest.main()

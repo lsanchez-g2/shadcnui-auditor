@@ -92,7 +92,7 @@ section.blk:first-of-type{margin-top:0}
 .ring circle{fill:none;stroke-width:9;stroke-linecap:round}
 .ring .track{stroke:var(--muted)}
 .ring .bar{stroke:var(--score-color);stroke-dasharray:var(--c);stroke-dashoffset:var(--c);transition:stroke-dashoffset 1.4s var(--ease) .2s}
-.ring .val{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.ring .val{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
 .ring .val b{font-size:34px;font-weight:700;letter-spacing:-.03em;line-height:1}
 .ring .val span{font-size:11px;color:var(--muted-fg);margin-top:4px}
 .score .lbl{font-size:12px;color:var(--muted-fg);max-width:180px}
@@ -292,7 +292,8 @@ const isSystem=(meta.mode||'system')==='system';
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- helpers ---------- */
-const h=(t,a={},...k)=>{const e=document.createElement(t);for(const[x,y]of Object.entries(a)){if(y==null)continue;if(x==='html')e.innerHTML=y;else if(x==='cls')e.className=y;else if(x.startsWith('on'))e.addEventListener(x.slice(2),y);else e.setAttribute(x,y)}for(const c of k.flat(Infinity)){if(c==null||c===false)continue;e.append(c.nodeType?c:document.createTextNode(String(c)))}return e};
+const SVG_TAGS=new Set(['svg','circle','path','g','line','rect']);
+const h=(t,a={},...k)=>{const e=SVG_TAGS.has(t)?document.createElementNS('http://www.w3.org/2000/svg',t):document.createElement(t);for(const[x,y]of Object.entries(a)){if(y==null)continue;if(x==='html')e.innerHTML=y;else if(x==='cls')e.setAttribute('class',y);else if(x.startsWith('on'))e.addEventListener(x.slice(2),y);else e.setAttribute(x,y)}for(const c of k.flat(Infinity)){if(c==null||c===false)continue;e.append(c.nodeType?c:document.createTextNode(String(c)))}return e};
 const app=document.getElementById('app');
 const scoreColor=n=>n>=85?'var(--ok)':n>=65?'var(--med)':n>=45?'var(--high)':'var(--crit)';
 const verdictClass=v=>/READY/.test(v)?'ready':/BLOCKED/.test(v)?'blocked':/HEALTH/.test(v)?'health':'fixes';
