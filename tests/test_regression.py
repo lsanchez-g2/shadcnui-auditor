@@ -309,6 +309,31 @@ class IntentionalDivergence(unittest.TestCase):
         self.assertEqual(adj['scores']['compliance_pct'], 100)
         self.assertIsNone(render_report.adjusted_scores(merged, review_without))
 
+    def test_plain_language_gaps_lists_steps_missing_any_plain_field(self):
+        """Designer-facing report cards need plain_title/plain_now/plain_fix on every fix step.
+        The fields are optional (old review.json must still render), so render_report reports
+        which steps would fall back to the technical wording instead of failing."""
+        sys.path.insert(0, SCRIPTS)
+        import render_report  # noqa: E402
+        full = {'step': 1, 'plain_title': 't', 'plain_now': 'n', 'plain_fix': 'f'}
+        no_fix = {'step': 2, 'plain_title': 't', 'plain_now': 'n'}
+        blank = {'step': 3, 'plain_title': 't', 'plain_now': '  ', 'plain_fix': 'f'}
+        bare = {'step': 4}
+        review = {'fix_order': [full, no_fix, blank, bare]}
+        self.assertEqual(render_report.plain_language_gaps(review), [2, 3, 4])
+        self.assertEqual(render_report.plain_language_gaps({'fix_order': [full]}), [])
+        self.assertEqual(render_report.plain_language_gaps({}), [])
+
+    def test_plain_sentences_stay_single_and_short(self):
+        """plain_now / plain_fix are meant to be one easy sentence each."""
+        sys.path.insert(0, SCRIPTS)
+        import render_report  # noqa: E402
+        ok = {'step': 1, 'plain_title': 't', 'plain_now': 'One short sentence.', 'plain_fix': 'Another one.'}
+        long = {'step': 2, 'plain_title': 't', 'plain_now': 'x' * 200, 'plain_fix': 'f'}
+        multi = {'step': 3, 'plain_title': 't', 'plain_now': 'First. Second.', 'plain_fix': 'f'}
+        self.assertEqual(render_report.plain_language_too_long({'fix_order': [ok]}), [])
+        self.assertEqual(render_report.plain_language_too_long({'fix_order': [long, multi]}), [2, 3])
+
 
 if __name__ == '__main__':
     unittest.main()

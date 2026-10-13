@@ -37,6 +37,13 @@ When the verdict is `BLOCKED (off-spec)`, add `unblock_cost` to review.json: the
 ## Fix order
 Sort by (severity desc, effort asc, number of components affected desc). Group fixes that share a root cause (one missing token → six unbound layers) and state the root fix first so the designer does not fix six symptoms.
 
+## Plain-language wording (the designer-facing report)
+The report's first screen is read by designers who will not open a finding. Alongside the technical text, write plain wording for them:
+- `plain_verdict` (top level): one sentence, what state it is in and what it takes to hand off. No scores, no token names.
+- On every `fix_order` step: `plain_title` (what is wrong, as a short phrase), `plain_now` (**how it affects people today**, one sentence), `plain_fix` (**the proposed solution**, one sentence).
+
+Rules: one sentence each, at most 140 characters, no finding ids, no hex values, no jargon a designer would not say out loud (say "the focus outline" not "ring token binding" unless the token name is the fix). `plain_now` describes the effect on users or on the team's handoff, not the defect itself. `plain_fix` is an action a designer can start immediately. Fields are optional for old files, but `render_report.py` warns when a step lacks them and the report falls back to the technical `action`.
+
 ## Recommendations
 Structural, not cosmetic: collection reorganisation, convention choice (opacity vs token states — pick one, say why for this file), what to add to component descriptions, how to stage the migration if it is large. Each maps to the shadcn CSS variable or class it aligns with.
 
@@ -46,8 +53,10 @@ Structural, not cosmetic: collection reorganisation, convention choice (opacity 
 {
   "verdict": "NEEDS FIXES",
   "verdict_paragraph": "…",
+  "plain_verdict": "Almost ready: four fixes, about two hours, then it is good to hand off.",
   "top_issues": ["<finding id> — one line", "… up to 5"],
-  "fix_order": [{"step": 1, "finding_ids": ["tokens-001","variables-004"], "root_cause": "…", "action": "…", "effort": "M"}],
+  "fix_order": [{"step": 1, "finding_ids": ["tokens-001","variables-004"], "root_cause": "…", "action": "…", "effort": "M",
+                "plain_title": "The on-state is hard to see", "plain_now": "People with low vision can barely tell a toggle is on.", "plain_fix": "Use the primary color for the on-state track."}],
   "resolutions": [{"finding_ids": ["a","b"], "decision": "…", "basis": "snapshot field / docs anchor"}],
   "demotions": [{"finding_id": "…", "from": "high", "to": "medium", "reason": "…"}],
   "gaps": [{"owner_agent": "states", "what": "…"}],
