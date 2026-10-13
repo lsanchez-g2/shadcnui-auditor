@@ -8,7 +8,10 @@ Designer-friendly report. The old report had 13 sections and ~190 KB of tables u
 - **Everything technical is folded** under "Technical details" (findings with filters, contrast and states, tokens/parity/architecture, compliant and off-spec, decisions and recommendations, run log), closed by default. Print forces them open.
 - **New optional reviewer fields:** `plain_verdict` and, per `fix_order` step, `plain_title`, `plain_now`, `plain_fix` (one sentence each, max 140 chars). Optional so existing `review.json` files still render, falling back to the technical `action` and `root_cause`. `render_report.py` warns on missing or over-long fields (`plain_language_gaps`, `plain_language_too_long`). Documented in `agents/reviewer.md`.
 - Raw vs accepted-divergence-adjusted score is still always shown, now as a one-line note under the health bars.
-- Tests: 2 added (28 total).
+- Tests: 2 added for the plain fields.
+- **Fixed: the score ring never drew.** `h()` created `<svg>`/`<circle>` with `createElement`, which makes HTML-namespace elements that lay out at width 0, so the report (and the README hero) showed a number with no arc. SVG tags now use `createElementNS`; the ring's label is also vertically centered. One regression test added (29 total).
+- **Fixed: `dist/shadcn-figma-audit-swarm.skill` was stale and broken.** It predated 0.4.0 and omitted `scripts/_scoring.py`, so `consolidate.py` and `render_report.py` could not import. Rebuilt with `_scoring.py` and `tests/`; its selftest passes from a clean unzip.
+- README report description and hero image updated; `audit-reports/` and `.playwright-mcp/` gitignored (generated output can contain client design data).
 
 ## 0.4.0 — 2026-09-07
 

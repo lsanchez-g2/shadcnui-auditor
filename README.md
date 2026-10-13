@@ -15,7 +15,7 @@
 
 <br>
 
-<img src="docs/assets/report-hero.jpg" alt="Audit report: score ring, KPI strip, severity distribution and per-dimension progress bars" width="920">
+<img src="docs/assets/report-hero.jpg" alt="Audit report: verdict card, plain-language fix cards and per-area health bars" width="920">
 
 <sub>Rendered from synthetic data — see <code>scripts/make_fixture.py</code></sub>
 
@@ -197,16 +197,17 @@ The skill reads collections, modes, alias chains and scopes itself through a **r
 <details>
 <summary><b>What's inside</b></summary>
 
-- Verdict, score, and the cheapest unblock when blocked
-- KPI strip (checks · findings · critical · high · off-spec · unverified) and severity distribution
-- Per-dimension progress bars with weights
-- Executive summary and top issues
-- **Fix order** grouped by root cause, with effort and linked finding IDs
-- **Findings** — filter by severity or agent, search any field; each expands to current → expected value, exact fix (copy button), benefit, evidence, docs link
-- Token inventory vs. baseline · contrast matrix with colour-pair swatches · state × variant coverage · component parity · alias chains · mode parity · styles
-- Already-compliant list (so nothing gets "fixed" that isn't broken)
-- Off-spec inventory, unverified checks, specialist disagreements and how the reviewer resolved them
-- Recommendations, reviewer demotions, run log
+**First screen, for designers (no scrolling through tables):**
+- Verdict, score, one plain sentence on where it stands, and the cheapest unblock when blocked
+- **What to fix, in order** — each fix is a card with a plain title, **Now** (one sentence: how it affects people today) and **Fix** (one sentence: the proposed solution), plus severity and effort
+- Health bars per area, with the raw vs. accepted-divergence-adjusted score when relevant
+
+**Technical details, folded and closed by default:**
+- **All findings** — filter by severity or agent, search any field; each expands to current → expected value, exact fix (copy button), benefit, evidence, docs link
+- Contrast matrix with colour-pair swatches · state × variant coverage
+- Token inventory vs. baseline · component parity · alias chains · mode parity · styles · handoff readiness
+- Already-compliant list (so nothing gets "fixed" that isn't broken), off-spec inventory, unverified checks, specialist disagreements and how the reviewer resolved them
+- Accepted divergences, recommendations, reviewer demotions, run log
 
 Self-contained HTML. Light/dark with three-state theme handling. Sortable tables. Print stylesheet. Respects `prefers-reduced-motion`. Set in Geist and Geist Mono — the faces shadcn's own docs use.
 

@@ -10,3 +10,7 @@ review.json
 .DS_Store
 node_modules/
 __pycache__/
+
+# local tooling / generated audit output (contains client design data)
+audit-reports/
+.playwright-mcp/
