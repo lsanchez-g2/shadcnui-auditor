@@ -375,6 +375,33 @@ class IntentionalDivergence(unittest.TestCase):
         self.assertEqual(render_report.combined_prompt({'fix_order': [{'step': 1}]}), '')
         self.assertEqual(render_report.combined_prompt({}), '')
 
+    def test_reviewer_demotions_are_applied_to_findings_and_counts(self):
+        """The reviewer may lower a severity (review.json.demotions). The report used to list
+        demotions in a fold but keep the old severity in the header counts and card badges, so
+        a demoted critical still read as critical. apply_demotions must change the finding,
+        record demoted_from, and recompute the by-severity counts."""
+        sys.path.insert(0, SCRIPTS)
+        import render_report  # noqa: E402
+        merged = {'findings': [
+            {'id': 'a-1', 'severity': 'critical', 'merged_ids': ['a-1']},
+            {'id': 'b-1', 'severity': 'high', 'merged_ids': ['b-1', 'b-2']},
+            {'id': 'c-1', 'severity': 'low', 'merged_ids': ['c-1']}],
+            'counts': {'by_severity': {'critical': 1, 'high': 1, 'medium': 0, 'low': 1}}}
+        review = {'demotions': [
+            {'finding_id': 'a-1', 'from': 'critical', 'to': 'high', 'reason': 'r'},
+            {'finding_id': 'b-2', 'from': 'high', 'to': 'medium', 'reason': 'matched via merged_ids'},
+            {'finding_id': 'c-1', 'from': 'low', 'to': 'critical', 'reason': 'raising is not allowed'},
+            {'finding_id': 'zzz', 'from': 'high', 'to': 'low', 'reason': 'unknown id is ignored'}]}
+        out = render_report.apply_demotions(merged, review)
+        sev = {f['id']: f['severity'] for f in out['findings']}
+        self.assertEqual(sev, {'a-1': 'high', 'b-1': 'medium', 'c-1': 'low'})
+        self.assertEqual(out['findings'][0]['demoted_from'], 'critical')
+        self.assertEqual(out['counts']['by_severity'], {'critical': 0, 'high': 1, 'medium': 1, 'low': 1})
+        # input is not mutated, and no demotions means an unchanged copy
+        self.assertEqual(merged['findings'][0]['severity'], 'critical')
+        same = render_report.apply_demotions(merged, {})
+        self.assertEqual(same['counts']['by_severity'], merged['counts']['by_severity'])
+
 
 if __name__ == '__main__':
     unittest.main()

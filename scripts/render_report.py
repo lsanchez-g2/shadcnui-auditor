@@ -36,6 +36,43 @@ def adjusted_scores(merged, review):
             'raw_compliance_pct': raw.get('compliance_pct'), 'raw_health_score': raw.get('health_score')}
 
 
+SEVERITY_RANK = {'low': 0, 'medium': 1, 'high': 2, 'critical': 3}
+
+
+def apply_demotions(merged, review):
+    """Apply review.json.demotions to the findings the report shows. The reviewer may lower a
+    severity with a stated reason (agents/reviewer.md); merged.json is computed before it runs,
+    so without this the header counts and card badges keep the pre-review severity and a
+    demoted critical still reads as critical. Raising is never allowed, so a demotion whose
+    target is not strictly lower is ignored. A demotion matches a finding by its id or any of
+    its merged_ids. Returns a copy; the input is not mutated."""
+    out = json.loads(json.dumps(merged))
+    demotions = review.get('demotions') or []
+    if not demotions:
+        return out
+    to_by_id = {}
+    for d in demotions:
+        if d.get('to') in SEVERITY_RANK and d.get('finding_id'):
+            to_by_id[d['finding_id']] = d['to']
+    for f in out.get('findings', []):
+        ids = [f.get('id')] + list(f.get('merged_ids') or [])
+        targets = [to_by_id[i] for i in ids if i in to_by_id]
+        if not targets:
+            continue
+        new = min(targets, key=lambda t: SEVERITY_RANK[t])
+        old = f.get('severity')
+        if old in SEVERITY_RANK and SEVERITY_RANK[new] < SEVERITY_RANK[old]:
+            f['severity'] = new
+            f.setdefault('demoted_from', old)
+    by_sev = {k: 0 for k in SEVERITY_RANK}
+    for f in out.get('findings', []):
+        if f.get('severity') in by_sev:
+            by_sev[f['severity']] += 1
+    counts = out.setdefault('counts', {})
+    counts['by_severity'] = {k: by_sev[k] for k in ('critical', 'high', 'medium', 'low')}
+    return out
+
+
 PLAIN_FIELDS = ('plain_title', 'plain_now', 'plain_fix')
 PLAIN_MAX_CHARS = 140
 
@@ -116,6 +153,7 @@ def main():
     name = meta.get('file_name') or 'Figma'
     title = f"{name} Audit"
 
+    merged = apply_demotions(merged, review)
     adjusted = adjusted_scores(merged, review)
     data = json.dumps({'merged': merged, 'review': review, 'adjusted': adjusted,
                        'combined_prompt': combined_prompt(review)}, ensure_ascii=False)
