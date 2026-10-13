@@ -23,7 +23,9 @@ Audit only what the fetched API defines. If the component's variant axes include
 
 ## System mode
 
-In `system` mode the snapshot has `variables.json` (full, from `use_figma`), `components.json` (every set with its property definitions, descriptions, doc links) and `spec/`, but **no `nodes/`** — per-variant design context is deliberately not extracted for 100+ sets. Score only what can be seen at that level, and do not emit checks you cannot evaluate: a check that would need a layer is simply not written, not written as unverified (an unverified check still counts against compliance and a hundred of them turn a structural audit into noise). What each agent audits at system level:
+In `system` mode the snapshot has `variables.json` (full, from `use_figma`), `components.json` (every set with its property definitions, descriptions, doc links) and `spec/`, but **no `nodes/`** — per-variant design context is deliberately not extracted for 100+ sets. Score only what can be seen at that level, and do not emit checks you cannot evaluate: a check that would need a layer is simply not written, not written as unverified (an unverified check still counts against compliance and a hundred of them turn a structural audit into noise).
+
+**Exception — `system, fully sampled`.** When the orchestrator's prompt says this variant (a small page of related sets, ≤ 20 total variants), `nodes/<id>.json` *is* populated, per-set, same as `component` mode, and it is authoritative wherever it exists: score from it, not from the system-level inference rules below, for any set that has a node file. This is also the only mode where `architecture`-category claims about a multi-sub-component set (nested badge, group, count part) may cite `nodes/<id>.json.structural_probe` — see `references/extraction.md`. Only fall back to the system-level rules below for a set the orchestrator did not extract a node file for. What each agent audits at system level:
 
 - tokens, variables, modes, contrast: the whole library — this is the mode they were built for.
 - styles: the style inventory against Tailwind classes; no per-layer bindings.

@@ -40,8 +40,11 @@ Read the URL. Decide and state the mode in your first line:
 | `node-id` is one variant (`<symbol>` named `Prop=Value, …`) | `component`, on its parent set |
 | `node-id` is a standalone component (`<symbol>` with a plain name and no set parent — Dialog, Separator often are) | `component`, on the node itself; anatomy and slots are the audit, there is no variant matrix |
 | `node-id` is a plain frame, group, or instance with no `<symbol>` children or parent | Stop: "Not a component — nothing to audit." |
+| `node-id` is a page/section holding several component sets whose **combined** variant count is small enough to sample in full (roughly ≤ 20 variants total) | `system`, fully sampled — see note below |
 
 Confirm the node type with `get_metadata` before committing; URLs lie about what they point to, and the metadata XML never says "component set" — it says `<frame>` and you read the children.
+
+**`system, fully sampled`** exists for the case a plain `system` route handles badly: a page holding several *related* sets (Avatar + Avatar Badge + Avatar Group, say) where each set alone is small. Plain `system` mode skips `nodes/` entirely (see `agents/_common.md`, "System mode") because it assumes 100+ sets — but with a handful of sets and ≤ 20 total variants, running `get_design_context` per set is cheap and the per-variant detail is exactly what catches cross-set architecture issues (a badge's `strokeAlign`, a group's `itemSpacing`) that naming/variable-level checks can't see. In this variant: run extraction's full per-set `get_design_context` pass as in `component` mode, for every set on the page, and write `nodes/<id>.json` for each. State in your first line that `nodes/` is populated and therefore authoritative — tell agents explicitly (in the per-agent prompt, not left to the "System mode" default) to prefer `nodes/` over system-level inference wherever a node file exists for the set they're scoring.
 
 ### 0.2 Pick the shadcn flavor
 
